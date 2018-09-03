@@ -1,0 +1,32 @@
+Here are some notes about fserver - the Fuego server implementation.
+
+Files:
+ fserver.py - the Fuego server
+ fserver-server.py - a python web server (supports CGI) for testing purposes
+ start_server - a shell script to start the test server
+
+Data Files:
+ in the 'files' directory:
+  * tests - has tests that have been uploaded to the server
+  * requests - has requests that were put to the server
+  * runs - has runs that were put to the server
+
+The server itself is a CGI script, written in python
+
+== user interface ==
+It handles showing a user interface to examine the objects on the server.
+
+It can show lists of objects, and the content of individual objects.
+
+== programatic interface ==
+It also handles requests from ftc to put, update, query, and remove objects.
+
+The server is a "dumb store", in that it doesn't do any intelligent handling
+of the data, or any visualization. It's primary purpose is to allow sharing
+of objects bewteen Fuego users and labs.
+
+current objects supported are: tests, run requests, runs.
+
+Other objects that might be supported in the future include:
+ - pass criteria, labs, boards, hosts, reviews
+
