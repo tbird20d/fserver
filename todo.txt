@@ -1,6 +1,6 @@
 To Do file for fserver:
  - eliminate pages directory
-   - don't create tbwiki file for request in do_put_request 
+   - don't create tbwiki file for request in do_put_request
  - extract test.yaml from test .ftp file in do_put_test
  - extract run.json from run .frp file in do_put_run
  - support 'update_request' action for changing the state of a request
