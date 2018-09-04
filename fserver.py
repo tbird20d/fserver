@@ -8,7 +8,7 @@
 # Implementation notes:
 #  files directory = place where uploaded file bundles are stored
 #  data directory = place where yaml/json (data) files are stored
-#  page directory = place where web pages are stored
+#  pages directory = place where web pages are stored
 #
 # When a file bundle is uploaded, the meta-data file (either json or yaml)
 # is extracted, and placed in the data directory.
@@ -224,10 +224,11 @@ def do_put_test(req):
     # extract yaml file into data dir
     tdd = test_data_dir
     tn = test_name
+    tn_with_version = filename[:-4]
     cmd = "tar -C %s -xf %s %s/test.yaml" % (tdd, filepath, tn)
     result = os.system(cmd)
     yaml_src_name = "%s/%s/test.yaml" % (tdd, tn)
-    yaml_dest_name = "%s/%s.yaml" % (tdd, tn)
+    yaml_dest_name = "%s/%s.yaml" % (tdd, tn_with_version)
     if not os.path.exists(yaml_src_name):
         msg += "Error: can't find %s\n in extracted .ftp contents" % yaml_src_name
         send_response("FAIL", msg)
@@ -513,7 +514,7 @@ def do_remove_request(req):
 
 
 def file_list_html(req, file_type, subdir, extension):
-    if file_type == "file":
+    if file_type == "files":
         src_dir = req.config.files_dir + os.sep + subdir
     elif file_type == "data":
         src_dir = req.config.data_dir + os.sep + subdir
@@ -534,7 +535,7 @@ def file_list_html(req, file_type, subdir, extension):
     if not filelist:
         return req.html_error("No %s files found." % subdir[:-1])
 
-    files_url = "/files/%s/" % subdir
+    files_url = "/%s/%s/" % (file_type, subdir)
     html = "<ul>"
     for item in filelist:
         html += '<li><a href="'+files_url+item+'">' + item + '</a></li>\n'
@@ -553,20 +554,26 @@ def do_show(req):
 
     print("<H1>%s</h1>" % title)
 
-    if req.page_name=="Tests":
-        print(file_list_html(req, "file", "tests", ".ftp"))
+    if req.page_name=="tests":
+        # FIXTHIS - convert to pretty-printed list of tests, with link
+        # to test.yaml and .ftp file
+        print(file_list_html(req, "data", "tests", ".yaml"))
+        print(file_list_html(req, "files", "tests", ".ftp"))
 
-    if req.page_name=="Requests":
+    if req.page_name=="requests":
         print(file_list_html(req, "data", "requests", ".json"))
 
-    if req.page_name=="Runs":
-        print(file_list_html(req, "file", "runs", ".frp"))
+    if req.page_name=="runs":
+        # FIXTHIS - convert to pretty-printed list of tests, with link
+        # to test.yaml and .ftp file
+        print(file_list_html(req, "data", "runs", ".json"))
+        print(file_list_html(req, "files", "runs", ".frp"))
 
     print("""Here are links to the different Fuego objects:<br>
 <ul>
-<li><a href="%(url_base)s/Tests">Tests</a></li>
-<li><a href="%(url_base)s/Requests">Requests</a></li>
-<li><a href="%(url_base)s/Runs">Runs</a></li>
+<li><a href="%(url_base)s/tests">Tests</a></li>
+<li><a href="%(url_base)s/requests">Requests</a></li>
+<li><a href="%(url_base)s/runs">Runs</a></li>
 </ul>
 <hr>
 """ % req.config )
