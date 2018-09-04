@@ -34,7 +34,6 @@ class fServerRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
     """
     def do_GET(self):
         """Serve a GET request."""
-        self.log_message("what's up")
         if self.is_cgi():
             self.log_message("is_cgi")
             self.run_cgi()
