@@ -28,5 +28,6 @@ of objects bewteen Fuego users and labs.
 current objects supported are: tests, run requests, runs.
 
 Other objects that might be supported in the future include:
- - pass criteria, labs, boards, hosts, reviews
+ - labs, hosts, boards, pass-criteria, reviews, users?
+ - hosts, labs and users might one-time-pad encryption keys
 
