@@ -46,6 +46,10 @@ VERSION=(0,2,0)
 
 base_dir = "/home/tbird/work/fserver"
 
+def log_this(msg):
+    with open("logfile","a") as f:
+        f.write("[%s] %s\n" % (get_timestamp(), msg))
+
 # define an instance to hold config vars
 class config_class:
     def __init__(self):
@@ -374,6 +378,7 @@ def item_match(pattern, item):
     return False
 
 def do_query_requests(req):
+    log_this("TRB: in do_query_requests 1")
     req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
 
@@ -412,7 +417,9 @@ def do_query_requests(req):
     for f in match_list:
        msg += f+"\n"
 
+    log_this("TRB: in do_query_requests 2 - before send_response")
     send_response("OK", msg)
+    log_this("TRB: in do_query_requests 3 - after send_response")
 
 def read_tbwikidb_file(file_path):
     # try opening the file
@@ -627,7 +634,10 @@ def main(req):
     if action in ["show", "put_test", "put_run", "put_request",
             "query_requests", "get_request", "remove_request"]:
         action_function = globals().get("do_" + action)
+        log_this("TRB: in main - before action_function for %s" % action)
         action_function(req)
+        # NOTE: computer actions don't return to here, but show does
+        log_this("TRB: in main - after action_function")
         return
 
     req.show_header("TBWiki Error")
