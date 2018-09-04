@@ -474,7 +474,7 @@ def read_tbwikidb_file(file_path):
 
 # FIXTHIS - could do get_next_request (with wildcards) to save a query
 def do_get_request(req):
-    requests_dir = req.config.files_dir + "/requests"
+    req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
 
     # handle host and target-based queries
@@ -485,7 +485,7 @@ def do_get_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = requests_dir + os.sep +request_id
+    filepath = req_data_dir + os.sep +request_id
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
@@ -499,7 +499,7 @@ def do_get_request(req):
     send_response("OK", data)
 
 def do_remove_request(req):
-    requests_dir = req.config.files_dir + "/requests"
+    req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
 
     try:
@@ -508,7 +508,7 @@ def do_remove_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = requests_dir + os.sep +request_id
+    filepath = req_data_dir + os.sep +request_id
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
