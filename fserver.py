@@ -5,6 +5,34 @@
 #
 # Copyright 2018 Sony
 #
+# Implementation notes:
+#  files directory = place where uploaded file bundles are stored
+#  data directory = place where yaml/json (data) files are stored
+#  page directory = place where web pages are stored
+#
+# When a file bundle is uploaded, the meta-data file (either json or yaml)
+# is extracted, and placed in the data directory.
+#
+# The server implements both the human user interace (web pages showing
+# the status of the object store), and the computer ReST interface (used
+# for sending, modifying and retrieving the data in the store)
+#
+# To do:
+# - queries:
+#   - add ability for query_requests to process attributes inside
+#     the file instead of just in the filename
+#   - handle regex wildcards instead of just start/end wildcards
+# - actions:
+#   - support update-request
+# - objects:
+#   - support host registration
+#   - support board registration
+# - security:
+#   - add otp authentication to all requests
+#     - check host's otp file for specified key
+#     - erase key after use
+# - see also items marked with FIXTHIS
+#
 
 import sys
 import os
@@ -12,17 +40,25 @@ import time
 import cgi
 import re
 import json
+import yaml
 
-VERSION=(0,1,0)
+VERSION=(0,2,0)
 
 base_dir = "/home/tbird/work/fserver"
 
+# define an instance to hold config vars
 class config_class:
     def __init__(self):
         pass
 
     def __getitem__(self, name):
         return self.__dict__[name]
+
+config = config_class()
+config.data_dir = base_dir + "/data"
+config.url_base = "/fserver.py"
+config.files_dir = base_dir + "/files"
+config.page_dir = base_dir + "/pages"
 
 class req_class:
     def __init__(self, config):
@@ -31,7 +67,6 @@ class req_class:
         self.message = ""
         self.page_name = ""
         self.page_url = "page_name_not_set_error"
-        self.page_dir = "page_dir_not_set_error"
         self.form = None
         # name of page with data being pulled into current page
         # used for things like slideshows or blogs, that get their data
@@ -46,13 +81,13 @@ class req_class:
     def page_filename(self):
         if not hasattr(self, "page_name"):
             raise AttributeError, "Missing attribute"
-        return self.page_dir+os.sep+self.page_name
+        return self.config.page_dir+os.sep+self.page_name
 
     def read_page(self, page_name=""):
         if not page_name:
             page_filename = self.page_filename()
         else:
-                page_filename = self.page_dir+os.sep+page_name
+                page_filename = self.config.page_dir+os.sep+page_name
 
         return open(page_filename).read()
 
@@ -96,15 +131,12 @@ class req_class:
         self.show_message()
         print("</body>")
 
-    def html_error(msg):
-        return "<font color=red>" + msg + "</font>"
+    def html_error(self, msg):
+        return "<font color=red>" + msg + "</font><BR>"
 
 
 # end of req_class
 #######################
-
-# NOTE: this can also be called as req.html_error("error message")
-# (without having to import tbwiki_engine)
 
 def get_env(key):
     if os.environ.has_key(key):
@@ -123,22 +155,6 @@ def show_env(env, full=0):
         if full or key in env_filter:
             print "<li>%s=%s" % (key, env[key])
     print "</ul>"
-
-"""
-To do:
- - add ability for query_requests to process attributes inside the file
- instead of just in the filename, and handle wildcards
-
-"""
-def do_help(req):
-    req.show_header("ProcessorFuego Help")
-    print("""The Fuego processor is used to implement
-the server functions of a Fuego central server.
-<p>
-This includes handling things like file uploads and downloads, and data queries.
-<p>
-By default, this module just shows a list of things that can be done manually.
-""")
 
 def get_timestamp():
     t = time.time()
@@ -182,6 +198,8 @@ def save_file(req, file_field, upload_dir):
 def send_response(result, data):
     sys.stdout.write("Content-type: text/html\n\n%s\n" % result)
     sys.stdout.write(data)
+    sys.stdout.flush()
+    sys.exit(0)
 
 def do_put_test(req):
     upload_dir = req.config.files_dir + os.sep + "tests"
@@ -189,50 +207,49 @@ def do_put_test(req):
 
     if result != "OK":
         send_response(result, msg)
-        return
 
-    # should sanity-check the manifest (yaml) file here!
+    # FIXTHIS - should sanity-check the manifest (yaml) file here!
     filename = os.path.basename(filepath)
     if not filename.endswith(".ftp"):
         msg += "Invalid filename for test specified: %s (expected .ftp extension)\n" % filename
         os.unlink(filepath)
         send_response("FAIL", msg)
-        return
 
     msg += "Created %s\n" % filepath
 
     test_name = filename.split("-",1)[0]
 
-    # extract yaml file
-    pd = req.page_dir
+    test_data_dir = req.config.data_dir + os.sep + "tests"
+
+    # extract yaml file into data dir
+    tdd = test_data_dir
     tn = test_name
-    cmd = "tar -C %s -xf %s %s/test.yaml" % (pd, filepath, tn)
+    cmd = "tar -C %s -xf %s %s/test.yaml" % (tdd, filepath, tn)
     result = os.system(cmd)
-    yaml_fname = "%s/%s/test.yaml" % (pd, tn)
-    yaml_pname = "%s/%s.yaml" % (pd, tn)
-    if not os.path.exists(yaml_fname):
-        msg += "Error: can't find %s\n after extraction" % yaml_fname
+    yaml_src_name = "%s/%s/test.yaml" % (tdd, tn)
+    yaml_dest_name = "%s/%s.yaml" % (tdd, tn)
+    if not os.path.exists(yaml_src_name):
+        msg += "Error: can't find %s\n in extracted .ftp contents" % yaml_src_name
         send_response("FAIL", msg)
-        return
 
-    os.rename(yaml_fname, yaml_pname)
-    os.rmdir("%s/%s" % (pd, tn))
+    os.rename(yaml_src_name, yaml_dest_name)
+    os.rmdir("%s/%s" % (tdd, tn))
 
-    msg += "Created %s page\n" % yaml_pname
+    msg += "Extracted %s from uploaded file\n" % yaml_dest_name
 
-        # create wrapper tbwiki page for test
-    page_content = """Here is data for test package %(page_name)s:
-
-<hr>
-{{{#!FuegoShow
-item_ref=page_name.yaml
-}}}
---------
-
-Go to [[Tests]] page.
-"""
-    req.write_page(page_content, test_name)
-    msg += "Created %s page\n" % test_name
+    # create wrapper tbwiki page for test
+#    page_content = """Here is data for test package %(page_name)s:
+#
+#<hr>
+#{{{#!FuegoShow
+#item_ref=page_name.yaml
+#}}}
+#--------
+#
+#Go to [[Tests]] page.
+#"""
+#    req.write_page(page_content, test_name)
+#    msg += "Created %s page\n" % test_name
 
     send_response("OK", msg)
 
@@ -247,45 +264,45 @@ def do_put_run(req):
     # run-2016-02-16_12-21-00-Functional.bc-timdesk:bbb-poky-sdk.frp
     filename = os.path.basename(filepath)
     if not filename.startswith("run-") or not filename.endswith(".frp"):
-        msg ++ "Invalid filename for run specified: %s" % filename
+        msg += "Invalid filename for run specified: %s" % filename
         send_response("FAIL", msg)
-        return
 
-        run_name = filename[4:-4]
+    run_name = filename[4:-4]
     msg += "Created %s\n" % filepath
 
-    # extract json file
-    pd = req.page_dir
+    # extract json file into data dir
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+
+    rdd = run_data_dir
     rn = run_name
-    cmd = "tar -C %s -xf %s run/run.json --force-local" % (pd, filepath)
+    cmd = "tar -C %s -xf %s run/run.json --force-local" % (rdd, filepath)
     msg += "Tar cmd=%s\n" % cmd
     rcode = os.system(cmd)
     if rcode != 0:
         send_response("FAIL", msg+"Could not extract run/run.json file")
-        return
 
-    json_fname = "%s/run/run.json" % (pd)
-    json_pname = "%s/run-%s.json" % (pd, rn)
-    if not os.path.exists(json_fname):
-        send_response("FAIL", msg+"Missing run/run.json file in %s" % pd)
-        return
+    json_src_name = "%s/run/run.json" % (rdd)
+    json_dest_name = "%s/run-%s.json" % (rdd, rn)
+    if not os.path.exists(json_src_name):
+        msg += "Error: can't find %s\n in extracted .frp contents" % json_src_name
+        send_response("FAIL", msg)
 
-    os.rename(json_fname, json_pname)
-    os.rmdir("%s/run" % pd)
+    os.rename(json_src_name, json_dest_name)
+    os.rmdir("%s/run" % rdd)
 
     # FIXTHIS - should return url here instead of full server path??
-    msg += "Created %s page\n" % json_pname
+    msg += "Extracted %s from uploaded file\n" % json_dest_name
 
-        # read json file and create tbwiki page for test??
+    # create tbwiki page for test??
+    # skip for now
 
     send_response("OK", msg)
 
 
 def do_put_request(req):
-    upload_dir = req.config.files_dir + os.sep + "requests/"
+    req_data_dir = req.config.data_dir + os.sep + "requests"
     result = "OK"
     msg = ""
-
 
     #convert form (cgi.fieldStorage) to dictionary
     mydict = {}
@@ -296,15 +313,18 @@ def do_put_request(req):
     timestamp = get_timestamp()
     mydict["request_time"] = timestamp
 
+    # sanity check the submitted data
+    # check for host and board
     try:
         host = mydict["host"]
         board = mydict["board"]
+        # FIXTHIS - check that host and board are registered
     except:
         result = "FAIL"
         msg += "Error: missing host or board in form data"
 
     filename = "request-%s-%s:%s" % (timestamp, host, board)
-    jfilepath = upload_dir + filename + ".json"
+    jfilepath = req_data_dir + os.sep + filename + ".json"
 
     msg += "Filename '%s' calculated!\n" % jfilepath
 
@@ -314,26 +334,27 @@ def do_put_request(req):
     fout.write(data+'\n')
     fout.close()
 
-    page_filepath = req.page_dir + os.sep + filename
-
-    # convert to tbwikidb and save to file here
-    keylist = mydict.keys()
-
-    # FIXTHIS - could write only known fields here, to prevent abuse
-    # remove the 'action' key
-    keylist.remove("action")
-
-    keylist.sort()
-    fout = open(page_filepath, "w")
-
-    # FIXTHIS - this doesn't handle multi-line fields.  They should be put
-    # into a section
-    for k in keylist:
-        fout.write("; %s: %s\n" % (k, mydict[k]))
-    fout.close()
-
-    msg += "data=%s\n" % data
-    msg += "page_filepath=%s\n" % page_filepath
+    # write to tbwikidb page??
+#    page_filepath = req.config.page_dir + os.sep + filename
+#
+#    # convert to tbwikidb and save to file here
+#    keylist = mydict.keys()
+#
+#    # FIXTHIS - could write only known fields here, to prevent abuse
+#    # remove the 'action' key
+#    keylist.remove("action")
+#
+#    keylist.sort()
+#    fout = open(page_filepath, "w")
+#
+#    # FIXTHIS - this doesn't handle multi-line fields.  They should be put
+#    # into a section
+#    for k in keylist:
+#        fout.write("; %s: %s\n" % (k, mydict[k]))
+#    fout.close()
+#
+#    msg += "data=%s\n" % data
+#    msg += "page_filepath=%s\n" % page_filepath
 
     send_response(result, msg)
 
@@ -352,9 +373,10 @@ def item_match(pattern, item):
     return False
 
 def do_query_requests(req):
-    download_dir = req.config.files_dir + os.sep + "requests/"
+    req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
-    filelist = os.listdir(download_dir)
+
+    filelist = os.listdir(req_data_dir)
     filelist.sort()
 
     # can query by different fields, some in the name and some inside
@@ -478,13 +500,11 @@ def do_remove_request(req):
     except:
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
-        return
 
     filepath = requests_dir + os.sep +request_id
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
-        return
 
     os.remove(filepath)
 
@@ -492,8 +512,17 @@ def do_remove_request(req):
     send_response("OK", msg)
 
 
-def file_list_html(req, subdir, extension):
-    full_dirlist = os.listdir(req.config.files_dir+os.sep+subdir)
+def file_list_html(req, file_type, subdir, extension):
+    if file_type == "file":
+        src_dir = req.config.files_dir + os.sep + subdir
+    elif file_type == "data":
+        src_dir = req.config.data_dir + os.sep + subdir
+    elif file_type == "page":
+        src_dir = req.config.page_dir
+    else:
+        raise ValueError("cannot list files for file_type %s" % file_type)
+
+    full_dirlist = os.listdir(src_dir)
     full_dirlist.sort()
 
     # filter list to only .ftp files
@@ -525,13 +554,13 @@ def do_show(req):
     print("<H1>%s</h1>" % title)
 
     if req.page_name=="Tests":
-        print(file_list_html(req, "tests", ".ftp"))
+        print(file_list_html(req, "file", "tests", ".ftp"))
 
     if req.page_name=="Requests":
-        print(file_list_html(req, "requests", ".json"))
+        print(file_list_html(req, "data", "requests", ".json"))
 
     if req.page_name=="Runs":
-        print(file_list_html(req, "runs", ".frp"))
+        print(file_list_html(req, "file", "runs", ".frp"))
 
     print("""Here are links to the different Fuego objects:<br>
 <ul>
@@ -578,7 +607,6 @@ def main(req):
     #req.add_to_message("page_name=%s" % page_name)
 
     req.action = action
-    req.page_dir = req.config.data_dir + "/pages"
 
     # NOTE: uncomment this when you get a 500 error
     #req.show_header('TRB Debug')
@@ -599,18 +627,14 @@ def main(req):
     print(req.html_error("Unknown action '%s'" % action))
 
 
-# define an instance to hold config vars
-config = config_class()
-config.data_dir = base_dir
-config.url_base = "/fserver.py"
-config.files_dir = base_dir + "/files"
-
 req = req_class(config)
 
 if __name__=="__main__":
     try:
         main(req)
         req.show_message()
+    except SystemExit:
+        pass
     except:
         req.show_header("FSERVER Error")
         print """<font color="red">Exception raised by fserver software</font>"""
