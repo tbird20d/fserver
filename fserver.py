@@ -44,11 +44,11 @@ import yaml
 
 VERSION=(0,2,0)
 
-base_dir = "/home/tbird/work/fserver"
+base_dir = "/home/ubuntu/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
-    with open("logfile","a") as f:
+    with open(base_dir+"/logfile" ,"a") as f:
         f.write("[%s] %s\n" % (get_timestamp(), msg))
 
 # define an instance to hold config vars
@@ -61,7 +61,7 @@ class config_class:
 
 config = config_class()
 config.data_dir = base_dir + "/data"
-config.url_base = "/fserver.py"
+config.url_base = "/cgi-bin/fserver.py"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
 
@@ -541,7 +541,7 @@ def file_list_html(req, file_type, subdir, extension):
     if not filelist:
         return req.html_error("No %s files found." % subdir[:-1])
 
-    files_url = "/%s/%s/" % (file_type, subdir)
+    files_url = "/fserver-data/%s/%s/" % (file_type, subdir)
     html = "<ul>"
     for item in filelist:
         html += '<li><a href="'+files_url+item+'">' + item + '</a></li>\n'
@@ -553,10 +553,13 @@ def do_show(req):
     req.show_header("Fuego server objects")
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
-    if req.page_name == "fserver.py":
+    if req.page_name == "main":
         title = "Links to object lists"
     else:
-        title = "List of %s" % req.page_name
+        if req.page_name in ["tests", "requests", "runs"]:
+            title = "List of %s" % req.page_name
+        else:
+            title = "Error - unknown object type '%s'" % req.page_name
 
     print("<H1>%s</h1>" % title)
 
@@ -610,12 +613,10 @@ def main(req):
 
     # get page name
     page_name = get_env("PATH_INFO")
-    if "/" in page_name:
-        page_name = os.path.basename(page_name)
-        req.set_page_name(page_name)
-    else:
-        req.add_to_message("Missing page name")
-        action = "error"
+    if not page_name:
+        page_name = "/main"
+    page_name = os.path.basename(page_name)
+    req.set_page_name(page_name)
 
     #req.add_to_message("page_name=%s" % page_name)
 
