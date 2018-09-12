@@ -323,6 +323,9 @@ def do_put_request(req):
     timestamp = get_timestamp()
     mydict["request_time"] = timestamp
 
+    # remove action
+    del(mydict["action"])
+
     # sanity check the submitted data
     # check for host and board
     try:
@@ -344,28 +347,6 @@ def do_put_request(req):
     fout = open(jfilepath, "w")
     fout.write(data+'\n')
     fout.close()
-
-    # write to tbwikidb page??
-#    page_filepath = req.config.page_dir + os.sep + filename
-#
-#    # convert to tbwikidb and save to file here
-#    keylist = mydict.keys()
-#
-#    # FIXTHIS - could write only known fields here, to prevent abuse
-#    # remove the 'action' key
-#    keylist.remove("action")
-#
-#    keylist.sort()
-#    fout = open(page_filepath, "w")
-#
-#    # FIXTHIS - this doesn't handle multi-line fields.  They should be put
-#    # into a section
-#    for k in keylist:
-#        fout.write("; %s: %s\n" % (k, mydict[k]))
-#    fout.close()
-#
-#    msg += "data=%s\n" % data
-#    msg += "page_filepath=%s\n" % page_filepath
 
     send_response(result, msg)
 
