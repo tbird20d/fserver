@@ -564,7 +564,7 @@ def file_list_html(req, file_type, subdir, extension):
     full_dirlist = os.listdir(src_dir)
     full_dirlist.sort()
 
-    # filter list to only .ftp files
+    # filter list to only ones with requested extension
     filelist = []
     for d in full_dirlist:
         if d.endswith(extension):
@@ -580,37 +580,85 @@ def file_list_html(req, file_type, subdir, extension):
     html += "</ul>"
     return html
 
+def show_request_table(req):
+    src_dir = req.config.data_dir + os.sep + "requests"
+
+    full_dirlist = os.listdir(src_dir)
+    full_dirlist.sort()
+
+    # filter list to only request....json files
+    filelist = []
+    for f in full_dirlist:
+        if f.startswith("request") and f.endswith(".json"):
+            filelist.append(f)
+
+    if not filelist:
+        return req.html_error("No request files found.")
+
+    files_url = config.files_url_base + "/data/requests/"
+    html = """<table border="1">
+  <tr>
+    <th>Request</th>
+    <th>State</th>
+    <th>Requestor</th>
+    <th>Host</th>
+    <th>Board</th>
+    <th>Test</th>
+    <th>Run (results)</th>
+  </tr>
+"""
+    import json
+    for item in filelist:
+        request_fd = open(src_dir+os.sep + item, "r")
+        req_dict = json.load(request_fd)
+        request_fd.close()
+
+        # add data, in case it's missing
+        try:
+            run_id = req_dict["run_id"]
+        except:
+            req_dict["run_id"] = "Not available"
+
+        html += '  <tr>\n'
+        html += '    <td><a href="'+files_url+item+'">' + item + '</a></td>\n'
+        for attr in ["state", "requestor", "host", "board", "test_name",
+                "run_id"]:
+            html += '    <td>%s</td>\n' % req_dict[attr]
+        html += '  </tr>\n'
+    html += "</table>"
+    print(html)
+
 
 def do_show(req):
     req.show_header("Fuego server objects")
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
-    if req.page_name == "main":
-        title = "Links to object lists"
-    else:
-        if req.page_name in ["tests", "requests", "runs"]:
-            title = "List of %s" % req.page_name
-        else:
-            title = "Error - unknown object type '%s'" % req.page_name
-
-    print("<H1>%s</h1>" % title)
+    if req.page_name not in ["tests", "requests", "runs"]:
+        title = "Error - unknown object type '%s'" % req.page_name
 
     if req.page_name=="tests":
         # FIXTHIS - convert to pretty-printed list of tests, with link
         # to test.yaml and .ftp file
+        print("<H1>List of tests</h1>")
         print(file_list_html(req, "data", "tests", ".yaml"))
         print(file_list_html(req, "files", "tests", ".ftp"))
 
     if req.page_name=="requests":
-        print(file_list_html(req, "data", "requests", ".json"))
+        print("<H1>Table of requests</H1>")
+        show_request_table(req)
 
     if req.page_name=="runs":
         # FIXTHIS - convert to pretty-printed list of tests, with link
         # to test.yaml and .ftp file
+        print("<H1>List of tests</h1>")
         print(file_list_html(req, "data", "runs", ".json"))
         print(file_list_html(req, "files", "runs", ".frp"))
 
-    print("""Here are links to the different Fuego objects:<br>
+    if req.page_name!="main":
+        print("<br><hr>")
+    print("<H1>Fuego objects on this server</h1>")
+    print("""
+Here are links to the different Fuego objects:<br>
 <ul>
 <li><a href="%(url_base)s/tests">Tests</a></li>
 <li><a href="%(url_base)s/requests">Requests</a></li>
