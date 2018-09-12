@@ -537,10 +537,13 @@ def do_remove_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = req_data_dir + os.sep +request_id
+    filepath = req_data_dir + os.sep + request_id
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
+
+    # FIXTHIS - should check permissions here
+    # original-submitter and requested-host only are allowed to remove
 
     os.remove(filepath)
 
