@@ -319,7 +319,7 @@ def do_put_request(req):
     for k in req.form.keys():
         mydict[k] = req.form[k].value
 
-    mydict["state"] = "new"
+    mydict["state"] = "pending"
     timestamp = get_timestamp()
     mydict["request_time"] = timestamp
 
@@ -349,6 +349,48 @@ def do_put_request(req):
     fout.close()
 
     send_response(result, msg)
+
+def do_update_request(req):
+    req_data_dir = req.config.data_dir + os.sep + "requests"
+    msg = ""
+
+    try:
+        request_id = req.form["request_id"].value
+    except:
+        msg += "Error: can't read request_id from form"
+        send_response("FAIL", msg)
+
+    filename = request_id
+    filepath = req_data_dir + os.sep + filename
+    if not os.path.exists(filepath):
+        msg += "Error: filepath %s does not exist" % filepath
+        send_response("FAIL", msg)
+
+    # read requested file
+    import json
+    request_fd = open(filepath, "r")
+    req_dict = json.load(request_fd)
+    request_fd.close()
+
+    # update fields from (cgi.fieldStorage)
+    for k in req.form.keys():
+        if k in ["request_id", "action"]:
+            # skip these
+            continue
+        if k in ["state", "run_id"]:
+            # FIXTHIS - could check the data input here
+            req_dict[k] = req.form[k].value
+        else:
+            msg = "Error - can't change field '%s' in request" % k
+            send_response("FAIL", msg)
+
+    # put dictionary back in json format (beautified)
+    data = json.dumps(req_dict, sort_keys=True, indent=4, separators=(',', ': '))
+    fout = open(filepath, "w")
+    fout.write(data+'\n')
+    fout.close()
+
+    send_response("OK", data)
 
 # try matching with simple wildcards (* at start or end of string)
 def item_match(pattern, item):
@@ -464,7 +506,7 @@ def do_get_request(req):
     msg = ""
 
     # handle host and target-based queries
-    msg += "In ProcessorFuego.py:get_request\n"
+    msg += "In fserver.py:get_request\n"
     try:
         request_id = req.form["request_id"].value
     except:
@@ -619,7 +661,8 @@ def main(req):
 
     # map action names to "do_<action>" functions
     if action in ["show", "put_test", "put_run", "put_request",
-            "query_requests", "get_request", "remove_request"]:
+            "query_requests", "get_request", "update_request",
+            "remove_request"]:
         action_function = globals().get("do_" + action)
         action_function(req)
         # NOTE: computer actions don't return to here, but 'show' does
