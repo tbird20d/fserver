@@ -65,6 +65,7 @@ class config_class:
 config = config_class()
 config.data_dir = base_dir + "/data"
 config.url_base = "/cgi-bin/fserver.py"
+config.files_url_base = "/fserver-data"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
 
@@ -546,7 +547,7 @@ def file_list_html(req, file_type, subdir, extension):
     if not filelist:
         return req.html_error("No %s files found." % subdir[:-1])
 
-    files_url = "/fserver-data/%s/%s/" % (file_type, subdir)
+    files_url = "%s/%s/%s/" % (config.files_url_base, file_type, subdir)
     html = "<ul>"
     for item in filelist:
         html += '<li><a href="'+files_url+item+'">' + item + '</a></li>\n'
