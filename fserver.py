@@ -31,6 +31,8 @@
 #   - add otp authentication to all requests
 #     - check host's otp file for specified key
 #     - erase key after use
+# - add hosts
+#    - so we can: 1) save an otp file, 2) validate requests?
 # - see also items marked with FIXTHIS
 #
 
@@ -39,8 +41,9 @@ import os
 import time
 import cgi
 import re
-import json
-import yaml
+# import these as needed
+#import json
+#import yaml
 
 VERSION=(0,2,0)
 
@@ -335,6 +338,7 @@ def do_put_request(req):
     msg += "Filename '%s' calculated!\n" % jfilepath
 
     # convert to json and save to file here
+    import json
     data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
     fout = open(jfilepath, "w")
     fout.write(data+'\n')
@@ -491,6 +495,7 @@ def do_get_request(req):
         send_response("FAIL", msg)
 
     # read requested file
+    import json
     request_fd = open(filepath, "r")
     mydict = json.load(request_fd)
 
