@@ -51,4 +51,18 @@ sys 0m0.040s
 
 fuegotest.org is just super slow!!
 
+Here are the test scripts:
 
+hello.py
+-----------------
+#!/usr/bin/python
+print("hello")
+-----------------
+
+hello-yaml-json.py
+-----------------
+#!/usr/bin/python
+import json
+import yaml
+print("hello")
+-----------------
