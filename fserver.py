@@ -271,7 +271,7 @@ def do_put_run(req):
     # should sanity-check the manifest (json) file here!
 
     # should be something like:
-    # run-2016-02-16_12-21-00-Functional.bc-timdesk:bbb-poky-sdk.frp
+    # run-2016-02-16_12-21-00-Functional.bc-on-timdesk:bbb.frp
     filename = os.path.basename(filepath)
     if not filename.startswith("run-") or not filename.endswith(".frp"):
         msg += "Invalid filename for run specified: %s" % filename
@@ -476,10 +476,10 @@ def do_query_runs(req):
             host_and_board = f.split("-")[-1][:-5]
             if not host_and_board:
                 continue
-#            if not item_match(query_host, host_and_board.split(":")[0]):
-#                continue
-#            if not item_match(query_board, host_and_board.split(":")[1]):
-#                continue
+            if not item_match(query_host, host_and_board.split(":")[0]):
+                continue
+            if not item_match(query_board, host_and_board.split(":")[1]):
+                continue
             match_list.append(f)
 
     # FIXTHIS - read files and filter by attributes
@@ -676,7 +676,7 @@ def show_request_table(req):
         return req.html_error("No request files found.")
 
     files_url = config.files_url_base + "/data/requests/"
-    html = """<table border="1">
+    html = """<table border="1" cellpadding="2">
   <tr>
     <th>Request</th>
     <th>State</th>
@@ -708,6 +708,55 @@ def show_request_table(req):
     html += "</table>"
     print(html)
 
+def show_run_table(req):
+    src_dir = req.config.data_dir + os.sep + "runs"
+
+    full_dirlist = os.listdir(src_dir)
+    full_dirlist.sort()
+
+    # filter list to only run....json files
+    filelist = []
+    for f in full_dirlist:
+        if f.startswith("run-") and f.endswith(".json"):
+            filelist.append(f)
+
+    if not filelist:
+        return req.html_error("No request files found.")
+
+    data_url = config.files_url_base + "/data/runs/"
+    files_url = config.files_url_base + "/files/runs/"
+    html = """<table border="1" cellpadding="2">
+  <tr>
+    <th>Run Id</th>
+    <th>Test</th>
+    <th>Spec</th>
+    <th>Host</th>
+    <th>Board</th>
+    <th>Result</th>
+    <th>Run File bundle</th>
+  </tr>
+"""
+    import json
+    for item in filelist:
+        # run_id is the filename with "run-" and ".json" removed
+        run_id = item[4:-5]
+        run_fd = open(src_dir+os.sep + item, "r")
+        run_dict = json.load(run_fd)
+        run_fd.close()
+
+        html += '  <tr>\n'
+        html += '    <td>%s</td>\n' % run_id
+        html += '    <td>%s</td>\n' % run_dict["name"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["board"]
+        html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
+        filename = item[:-4]+"frp"
+        html += '    <td><a href="'+files_url+filename+'">' + filename + '</a></td>\n'
+        html += '  </tr>\n'
+    html += "</table>"
+    print(html)
+
 
 def do_show(req):
     req.show_header("Fuego server objects")
@@ -730,9 +779,10 @@ def do_show(req):
     if req.page_name=="runs":
         # FIXTHIS - convert to pretty-printed list of tests, with link
         # to test.yaml and .ftp file
-        print("<H1>List of tests</h1>")
-        print(file_list_html(req, "data", "runs", ".json"))
-        print(file_list_html(req, "files", "runs", ".frp"))
+        print("<H1>Table of runs</h1>")
+        show_run_table(req)
+        #print(file_list_html(req, "data", "runs", ".json"))
+        #print(file_list_html(req, "files", "runs", ".frp"))
 
     if req.page_name!="main":
         print("<br><hr>")
