@@ -448,6 +448,48 @@ def do_query_requests(req):
 
     send_response("OK", msg)
 
+def do_query_runs(req):
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+    msg = ""
+
+    filelist = os.listdir(run_data_dir)
+    filelist.sort()
+
+    # can query by different fields, some in the name and some inside
+    # the json
+
+    try:
+        query_host = req.form["host"].value
+    except:
+        query_host = "*"
+
+    try:
+        query_board = req.form["board"].value
+    except:
+        query_board = "*"
+
+    # handle host and board-based queries
+    match_list = []
+    for f in filelist:
+        if f.startswith("run-") and f.endswith("json"):
+            # last item after dashes, with '.json' removed
+            host_and_board = f.split("-")[-1][:-5]
+            if not host_and_board:
+                continue
+#            if not item_match(query_host, host_and_board.split(":")[0]):
+#                continue
+#            if not item_match(query_board, host_and_board.split(":")[1]):
+#                continue
+            match_list.append(f)
+
+    # FIXTHIS - read files and filter by attributes
+    # should particularly filter on 'requestor'
+
+    for f in match_list:
+       msg += f+"\n"
+
+    send_response("OK", msg)
+
 def read_tbwikidb_file(file_path):
     # try opening the file
     fin = open(file_path)
@@ -548,6 +590,44 @@ def do_remove_request(req):
     os.remove(filepath)
 
     msg += "Request file %s was removed" % filepath
+    send_response("OK", msg)
+
+def do_remove_run(req):
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+    run_file_dir = req.config.files_dir + os.sep + "runs"
+    msg = ""
+
+    try:
+        run_id = req.form["run_id"].value
+    except:
+        msg += "Error: can't read run_id from form"
+        send_response("FAIL", msg)
+
+    datapath = run_data_dir + os.sep + run_id + ".json"
+    if not os.path.exists(datapath):
+        msg += "Error: filepath %s does not exist" % datapath
+        send_response("FAIL", msg)
+
+    # FIXTHIS - should check permissions here
+    # original-submitter and requested-host only are allowed to remove
+    try:
+        os.remove(datapath)
+    except:
+        send_response("FAIL", "Error: could not remove %s" % datapath)
+    msg += "Run file %s was removed\n" % datapath
+
+    filepath = run_file_dir + os.sep + run_id + ".frp"
+    if not os.path.exists(filepath):
+        msg += "Error: filepath %s does not exist" % filepath
+        send_response("FAIL", msg)
+
+    try:
+        os.remove(filepath)
+    except:
+        msg += "Error: could not remove %s" % filepath
+        send_response("FAIL", msg)
+    msg += "Run file %s was removed\n" % filepath
+
     send_response("OK", msg)
 
 
@@ -713,7 +793,7 @@ def main(req):
     # map action names to "do_<action>" functions
     if action in ["show", "put_test", "put_run", "put_request",
             "query_requests", "get_request", "update_request",
-            "remove_request"]:
+            "remove_request", "query_runs", "remove_run"]:
         action_function = globals().get("do_" + action)
         action_function(req)
         # NOTE: computer actions don't return to here, but 'show' does
