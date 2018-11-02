@@ -31,6 +31,8 @@
 #   - add otp authentication to all requests
 #     - check host's otp file for specified key
 #     - erase key after use
+# - add hosts
+#    - so we can: 1) save an otp file, 2) validate requests?
 # - see also items marked with FIXTHIS
 #
 
@@ -39,16 +41,17 @@ import os
 import time
 import cgi
 import re
-import json
-import yaml
+# import these as needed
+#import json
+#import yaml
 
 VERSION=(0,2,0)
 
-base_dir = "/home/tbird/work/fserver"
+base_dir = "/home/ubuntu/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
-    with open("logfile","a") as f:
+    with open(base_dir+"/logfile" ,"a") as f:
         f.write("[%s] %s\n" % (get_timestamp(), msg))
 
 # define an instance to hold config vars
@@ -61,7 +64,8 @@ class config_class:
 
 config = config_class()
 config.data_dir = base_dir + "/data"
-config.url_base = "/fserver.py"
+config.url_base = "/cgi-bin/fserver.py"
+config.files_url_base = "/fserver-data"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
 
@@ -267,7 +271,7 @@ def do_put_run(req):
     # should sanity-check the manifest (json) file here!
 
     # should be something like:
-    # run-2016-02-16_12-21-00-Functional.bc-timdesk:bbb-poky-sdk.frp
+    # run-2016-02-16_12-21-00-Functional.bc-on-timdesk:bbb.frp
     filename = os.path.basename(filepath)
     if not filename.startswith("run-") or not filename.endswith(".frp"):
         msg += "Invalid filename for run specified: %s" % filename
@@ -315,9 +319,12 @@ def do_put_request(req):
     for k in req.form.keys():
         mydict[k] = req.form[k].value
 
-    mydict["state"] = "new"
+    mydict["state"] = "pending"
     timestamp = get_timestamp()
     mydict["request_time"] = timestamp
+
+    # remove action
+    del(mydict["action"])
 
     # sanity check the submitted data
     # check for host and board
@@ -335,34 +342,55 @@ def do_put_request(req):
     msg += "Filename '%s' calculated!\n" % jfilepath
 
     # convert to json and save to file here
+    import json
     data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
     fout = open(jfilepath, "w")
     fout.write(data+'\n')
     fout.close()
 
-    # write to tbwikidb page??
-#    page_filepath = req.config.page_dir + os.sep + filename
-#
-#    # convert to tbwikidb and save to file here
-#    keylist = mydict.keys()
-#
-#    # FIXTHIS - could write only known fields here, to prevent abuse
-#    # remove the 'action' key
-#    keylist.remove("action")
-#
-#    keylist.sort()
-#    fout = open(page_filepath, "w")
-#
-#    # FIXTHIS - this doesn't handle multi-line fields.  They should be put
-#    # into a section
-#    for k in keylist:
-#        fout.write("; %s: %s\n" % (k, mydict[k]))
-#    fout.close()
-#
-#    msg += "data=%s\n" % data
-#    msg += "page_filepath=%s\n" % page_filepath
-
     send_response(result, msg)
+
+def do_update_request(req):
+    req_data_dir = req.config.data_dir + os.sep + "requests"
+    msg = ""
+
+    try:
+        request_id = req.form["request_id"].value
+    except:
+        msg += "Error: can't read request_id from form"
+        send_response("FAIL", msg)
+
+    filename = request_id
+    filepath = req_data_dir + os.sep + filename
+    if not os.path.exists(filepath):
+        msg += "Error: filepath %s does not exist" % filepath
+        send_response("FAIL", msg)
+
+    # read requested file
+    import json
+    request_fd = open(filepath, "r")
+    req_dict = json.load(request_fd)
+    request_fd.close()
+
+    # update fields from (cgi.fieldStorage)
+    for k in req.form.keys():
+        if k in ["request_id", "action"]:
+            # skip these
+            continue
+        if k in ["state", "run_id"]:
+            # FIXTHIS - could check the data input here
+            req_dict[k] = req.form[k].value
+        else:
+            msg = "Error - can't change field '%s' in request" % k
+            send_response("FAIL", msg)
+
+    # put dictionary back in json format (beautified)
+    data = json.dumps(req_dict, sort_keys=True, indent=4, separators=(',', ': '))
+    fout = open(filepath, "w")
+    fout.write(data+'\n')
+    fout.close()
+
+    send_response("OK", data)
 
 # try matching with simple wildcards (* at start or end of string)
 def item_match(pattern, item):
@@ -414,6 +442,48 @@ def do_query_requests(req):
 
     # FIXTHIS - read files and filter by attributes
     # particularly filter on 'state'
+
+    for f in match_list:
+       msg += f+"\n"
+
+    send_response("OK", msg)
+
+def do_query_runs(req):
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+    msg = ""
+
+    filelist = os.listdir(run_data_dir)
+    filelist.sort()
+
+    # can query by different fields, some in the name and some inside
+    # the json
+
+    try:
+        query_host = req.form["host"].value
+    except:
+        query_host = "*"
+
+    try:
+        query_board = req.form["board"].value
+    except:
+        query_board = "*"
+
+    # handle host and board-based queries
+    match_list = []
+    for f in filelist:
+        if f.startswith("run-") and f.endswith("json"):
+            # last item after dashes, with '.json' removed
+            host_and_board = f.split("-")[-1][:-5]
+            if not host_and_board:
+                continue
+            if not item_match(query_host, host_and_board.split(":")[0]):
+                continue
+            if not item_match(query_board, host_and_board.split(":")[1]):
+                continue
+            match_list.append(f)
+
+    # FIXTHIS - read files and filter by attributes
+    # should particularly filter on 'requestor'
 
     for f in match_list:
        msg += f+"\n"
@@ -478,7 +548,7 @@ def do_get_request(req):
     msg = ""
 
     # handle host and target-based queries
-    msg += "In ProcessorFuego.py:get_request\n"
+    msg += "In fserver.py:get_request\n"
     try:
         request_id = req.form["request_id"].value
     except:
@@ -491,6 +561,7 @@ def do_get_request(req):
         send_response("FAIL", msg)
 
     # read requested file
+    import json
     request_fd = open(filepath, "r")
     mydict = json.load(request_fd)
 
@@ -508,14 +579,55 @@ def do_remove_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = req_data_dir + os.sep +request_id
+    filepath = req_data_dir + os.sep + request_id
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
 
+    # FIXTHIS - should check permissions here
+    # original-submitter and requested-host only are allowed to remove
+
     os.remove(filepath)
 
     msg += "Request file %s was removed" % filepath
+    send_response("OK", msg)
+
+def do_remove_run(req):
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+    run_file_dir = req.config.files_dir + os.sep + "runs"
+    msg = ""
+
+    try:
+        run_id = req.form["run_id"].value
+    except:
+        msg += "Error: can't read run_id from form"
+        send_response("FAIL", msg)
+
+    datapath = run_data_dir + os.sep + run_id + ".json"
+    if not os.path.exists(datapath):
+        msg += "Error: filepath %s does not exist" % datapath
+        send_response("FAIL", msg)
+
+    # FIXTHIS - should check permissions here
+    # original-submitter and requested-host only are allowed to remove
+    try:
+        os.remove(datapath)
+    except:
+        send_response("FAIL", "Error: could not remove %s" % datapath)
+    msg += "Run file %s was removed\n" % datapath
+
+    filepath = run_file_dir + os.sep + run_id + ".frp"
+    if not os.path.exists(filepath):
+        msg += "Error: filepath %s does not exist" % filepath
+        send_response("FAIL", msg)
+
+    try:
+        os.remove(filepath)
+    except:
+        msg += "Error: could not remove %s" % filepath
+        send_response("FAIL", msg)
+    msg += "Run file %s was removed\n" % filepath
+
     send_response("OK", msg)
 
 
@@ -532,7 +644,7 @@ def file_list_html(req, file_type, subdir, extension):
     full_dirlist = os.listdir(src_dir)
     full_dirlist.sort()
 
-    # filter list to only .ftp files
+    # filter list to only ones with requested extension
     filelist = []
     for d in full_dirlist:
         if d.endswith(extension):
@@ -541,41 +653,142 @@ def file_list_html(req, file_type, subdir, extension):
     if not filelist:
         return req.html_error("No %s files found." % subdir[:-1])
 
-    files_url = "/%s/%s/" % (file_type, subdir)
+    files_url = "%s/%s/%s/" % (config.files_url_base, file_type, subdir)
     html = "<ul>"
     for item in filelist:
         html += '<li><a href="'+files_url+item+'">' + item + '</a></li>\n'
     html += "</ul>"
     return html
 
+def show_request_table(req):
+    src_dir = req.config.data_dir + os.sep + "requests"
+
+    full_dirlist = os.listdir(src_dir)
+    full_dirlist.sort()
+
+    # filter list to only request....json files
+    filelist = []
+    for f in full_dirlist:
+        if f.startswith("request") and f.endswith(".json"):
+            filelist.append(f)
+
+    if not filelist:
+        return req.html_error("No request files found.")
+
+    files_url = config.files_url_base + "/data/requests/"
+    html = """<table border="1" cellpadding="2">
+  <tr>
+    <th>Request</th>
+    <th>State</th>
+    <th>Requestor</th>
+    <th>Host</th>
+    <th>Board</th>
+    <th>Test</th>
+    <th>Run (results)</th>
+  </tr>
+"""
+    import json
+    for item in filelist:
+        request_fd = open(src_dir+os.sep + item, "r")
+        req_dict = json.load(request_fd)
+        request_fd.close()
+
+        # add data, in case it's missing
+        try:
+            run_id = req_dict["run_id"]
+        except:
+            req_dict["run_id"] = "Not available"
+
+        html += '  <tr>\n'
+        html += '    <td><a href="'+files_url+item+'">' + item + '</a></td>\n'
+        for attr in ["state", "requestor", "host", "board", "test_name",
+                "run_id"]:
+            html += '    <td>%s</td>\n' % req_dict[attr]
+        html += '  </tr>\n'
+    html += "</table>"
+    print(html)
+
+def show_run_table(req):
+    src_dir = req.config.data_dir + os.sep + "runs"
+
+    full_dirlist = os.listdir(src_dir)
+    full_dirlist.sort()
+
+    # filter list to only run....json files
+    filelist = []
+    for f in full_dirlist:
+        if f.startswith("run-") and f.endswith(".json"):
+            filelist.append(f)
+
+    if not filelist:
+        return req.html_error("No request files found.")
+
+    data_url = config.files_url_base + "/data/runs/"
+    files_url = config.files_url_base + "/files/runs/"
+    html = """<table border="1" cellpadding="2">
+  <tr>
+    <th>Run Id</th>
+    <th>Test</th>
+    <th>Spec</th>
+    <th>Host</th>
+    <th>Board</th>
+    <th>Result</th>
+    <th>Run File bundle</th>
+  </tr>
+"""
+    import json
+    for item in filelist:
+        # run_id is the filename with "run-" and ".json" removed
+        run_id = item[4:-5]
+        run_fd = open(src_dir+os.sep + item, "r")
+        run_dict = json.load(run_fd)
+        run_fd.close()
+
+        html += '  <tr>\n'
+        html += '    <td>%s</td>\n' % run_id
+        html += '    <td>%s</td>\n' % run_dict["name"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
+        html += '    <td>%s</td>\n' % run_dict["metadata"]["board"]
+        html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
+        filename = item[:-4]+"frp"
+        html += '    <td><a href="'+files_url+filename+'">' + filename + '</a></td>\n'
+        html += '  </tr>\n'
+    html += "</table>"
+    print(html)
+
 
 def do_show(req):
     req.show_header("Fuego server objects")
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
-    if req.page_name == "fserver.py":
-        title = "Links to object lists"
-    else:
-        title = "List of %s" % req.page_name
-
-    print("<H1>%s</h1>" % title)
+    if req.page_name not in ["tests", "requests", "runs"]:
+        title = "Error - unknown object type '%s'" % req.page_name
 
     if req.page_name=="tests":
         # FIXTHIS - convert to pretty-printed list of tests, with link
         # to test.yaml and .ftp file
+        print("<H1>List of tests</h1>")
         print(file_list_html(req, "data", "tests", ".yaml"))
         print(file_list_html(req, "files", "tests", ".ftp"))
 
     if req.page_name=="requests":
-        print(file_list_html(req, "data", "requests", ".json"))
+        print("<H1>Table of requests</H1>")
+        show_request_table(req)
 
     if req.page_name=="runs":
         # FIXTHIS - convert to pretty-printed list of tests, with link
         # to test.yaml and .ftp file
-        print(file_list_html(req, "data", "runs", ".json"))
-        print(file_list_html(req, "files", "runs", ".frp"))
+        print("<H1>Table of runs</h1>")
+        show_run_table(req)
+        #print(file_list_html(req, "data", "runs", ".json"))
+        #print(file_list_html(req, "files", "runs", ".frp"))
 
-    print("""Here are links to the different Fuego objects:<br>
+    if req.page_name!="main":
+        print("<br><hr>")
+    print("<H1>Fuego objects on this server</h1>")
+    print("""
+Here are links to the different Fuego objects:<br>
 <ul>
 <li><a href="%(url_base)s/tests">Tests</a></li>
 <li><a href="%(url_base)s/requests">Requests</a></li>
@@ -610,12 +823,10 @@ def main(req):
 
     # get page name
     page_name = get_env("PATH_INFO")
-    if "/" in page_name:
-        page_name = os.path.basename(page_name)
-        req.set_page_name(page_name)
-    else:
-        req.add_to_message("Missing page name")
-        action = "error"
+    if not page_name:
+        page_name = "/main"
+    page_name = os.path.basename(page_name)
+    req.set_page_name(page_name)
 
     #req.add_to_message("page_name=%s" % page_name)
 
@@ -631,7 +842,8 @@ def main(req):
 
     # map action names to "do_<action>" functions
     if action in ["show", "put_test", "put_run", "put_request",
-            "query_requests", "get_request", "remove_request"]:
+            "query_requests", "get_request", "update_request",
+            "remove_request", "query_runs", "remove_run"]:
         action_function = globals().get("do_" + action)
         action_function(req)
         # NOTE: computer actions don't return to here, but 'show' does

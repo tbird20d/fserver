@@ -1,0 +1,68 @@
+It takes about 3 seconds for every execution of fserver.py
+
+I tried making it into a .pyc file, but that didn't seem to help
+
+$ time ./fserver.py
+...
+real    0m3.234s
+user    0m0.752s
+sys     0m0.536s
+
+$ python -m compileall fserver.py
+Compiling fserver.py
+$ chmod a+x ./fserver.pyc
+$ time ./server.pyc
+real    0m2.984s
+user    0m0.684s
+sys     0m0.528s
+
+This doesn't help much.
+
+I did an strace, and found that a significant amount of time are spent
+importing yaml and json modules.
+
+In testing with hello.py, I found the following: 
+$ time ./hello.py
+hello
+
+real    0m0.493s
+user    0m0.080s
+sys 0m0.080s
+ubuntu@ip-10-0-0-67:~/work/fserver$ time ./hello-yaml-json.py
+hello
+
+real    0m2.867s
+user    0m0.756s
+sys 0m0.492s
+
+On timdesk, I got:
+$ time ./hello.py
+hello
+
+real    0m0.027s
+user    0m0.024s
+sys 0m0.000s
+tbird@timdesk:~/work/fserver$ time ./hello-yaml-json.py
+hello
+
+real    0m0.135s
+user    0m0.092s
+sys 0m0.040s
+
+fuegotest.org is just super slow!!
+
+Here are the test scripts:
+
+hello.py
+-----------------
+#!/usr/bin/python
+print("hello")
+-----------------
+
+hello-yaml-json.py
+-----------------
+#!/usr/bin/python
+import json
+import yaml
+print("hello")
+-----------------
