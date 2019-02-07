@@ -51,7 +51,7 @@ base_dir = "/home/ubuntu/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
-    with open(base_dir+"/logfile" ,"a") as f:
+    with open(base_dir+"/tmp/fserver.logfile" ,"a") as f:
         f.write("[%s] %s\n" % (get_timestamp(), msg))
 
 # define an instance to hold config vars

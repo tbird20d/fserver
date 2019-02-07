@@ -16,5 +16,5 @@ perl -p -i -e "s&^base_dir = .*&base_dir = \"$DIR\"&" fserver.py
 echo "Starting fserver"
 unset http_proxy
 unset ftp_proxy
-python fserver-server.py $1 >>/tmp/fserverlog.output 2>&1 &!
+python fserver-server.py $1 >>/tmp/fserver-server-log.output 2>&1 &!
 
