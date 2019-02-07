@@ -64,8 +64,9 @@ class config_class:
 
 config = config_class()
 config.data_dir = base_dir + "/data"
-config.url_base = "/cgi-bin/fserver.py"
-config.files_url_base = "/fserver-data"
+#config.url_base = "/cgi-bin/fserver.py"
+config.url_base = "/fserver.py"
+config.files_url_base = "/"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
 
