@@ -1,5 +1,8 @@
 #!/bin/sh
+#
+# Usage: start_server [<port>]
+#
 
 unset http_proxy
 unset ftp_proxy
-exec python fserver-server.py
+exec python fserver-server.py $1
