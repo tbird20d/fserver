@@ -51,7 +51,7 @@ base_dir = "/home/ubuntu/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
-    with open(base_dir+"/tmp/fserver.logfile" ,"a") as f:
+    with open(base_dir+"/fserver.log" ,"a") as f:
         f.write("[%s] %s\n" % (get_timestamp(), msg))
 
 # define an instance to hold config vars
@@ -66,7 +66,7 @@ config = config_class()
 config.data_dir = base_dir + "/data"
 #config.url_base = "/cgi-bin/fserver.py"
 config.url_base = "/fserver.py"
-config.files_url_base = "/"
+config.files_url_base = "/fserver-data"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
 
@@ -761,6 +761,7 @@ def show_run_table(req):
 
 def do_show(req):
     req.show_header("Fuego server objects")
+    log_this("in do_show, req.page_name='%s'\n" % req.page_name)
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
     if req.page_name not in ["tests", "requests", "runs"]:
@@ -836,6 +837,7 @@ def main(req):
     # NOTE: uncomment this when you get a 500 error
     #req.show_header('TRB Debug')
     #show_env(os.environ)
+    log_this("in main request loop: action='%s'<br>" % action)
     #print("in main request loop: action='%s'<br>" % action)
 
     # perform action
