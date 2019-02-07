@@ -61,8 +61,8 @@ class fServerRequestHandler(CGIHTTPServer.CGIHTTPRequestHandler):
 
         full_url = self.path
 	# escape embedded '%'s to avoid annoying exceptions
-	log_path = re.sub("%","%%", full_url)
-        self.log_message("path=%s" % log_path)
+	path = re.sub("%","%%", full_url)
+        self.log_message("path=%s" % path)
 
         for x in self.cgi_directories:
             i = len(x)
