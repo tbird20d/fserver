@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Usage: start_local_bg_fserver [<port>]
+#
+
+# find the directory this script is being run from
+SCRIPT=$(realpath "${BASH_SOURCE[0]}")
+DIR="$(dirname "${SCRIPT}")/fserver-data"
+
+echo "Switching fserver to use base directory:"
+echo "   $DIR"
+
+# if DIR has '&' in it somewhere, this won't work
+perl -p -i -e "s&^base_dir = .*&base_dir = \"$DIR\"&" fserver.py
+
+echo "Starting fserver"
+unset http_proxy
+unset ftp_proxy
+python fserver-server.py $1 >>/tmp/fserverlog.output 2>&1 &!
+
