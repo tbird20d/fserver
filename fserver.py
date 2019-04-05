@@ -48,6 +48,7 @@ import re
 VERSION=(0,2,0)
 
 base_dir = "/home/ubuntu/work/fserver/fserver-data"
+#base_dir = "/home/tbird/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
@@ -491,6 +492,53 @@ def do_query_runs(req):
 
     send_response("OK", msg)
 
+def do_query_tests(req):
+    test_data_dir = req.config.data_dir + os.sep + "tests"
+    test_files_dir = req.config.files_dir + os.sep + "tests"
+    msg = ""
+
+    filelist = os.listdir(test_data_dir)
+    filelist.sort()
+
+    # can query by different fields, all in the name for now
+    try:
+        query_name = req.form["name"].value
+    except:
+        query_name = "*"
+    try:
+        query_version = req.form["version"].value
+    except:
+        query_version = "*"
+
+    try:
+        query_release = req.form["release"].value
+    except:
+        query_release = "*"
+
+
+    # handle queries
+    match_list = []
+    for f in filelist:
+        if f.endswith(".yaml"):
+            ftp_filename = f[:-5] + ".ftp"
+            # remove '.yaml' and separate into parts
+            try:
+                name, version, release = f[:-5].split("-")
+            except:
+                continue
+            if not item_match(query_name, name):
+                continue
+            if not item_match(query_version, version):
+                continue
+            if not item_match(query_release, release):
+                continue
+            match_list.append(ftp_filename)
+
+    for f in match_list:
+       msg += f+"\n"
+
+    send_response("OK", msg)
+
 def read_tbwikidb_file(file_path):
     # try opening the file
     fin = open(file_path)
@@ -845,8 +893,11 @@ def main(req):
 
     # map action names to "do_<action>" functions
     if action in ["show", "put_test", "put_run", "put_request",
-            "query_requests", "get_request", "update_request",
-            "remove_request", "query_runs", "remove_run"]:
+            "query_requests", "query_runs", "query_tests",
+            "get_request", "get_run", "get_test",
+            "remove_request", "remove_test", "remove_run",
+            "update_request"]:
+    # FIXTHIS: missing get_run, get_test, remove_test, remove_run do functions
         action_function = globals().get("do_" + action)
         action_function(req)
         # NOTE: computer actions don't return to here, but 'show' does
