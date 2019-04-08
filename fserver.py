@@ -48,7 +48,8 @@ import re
 VERSION=(0,2,0)
 
 base_dir = "/home/ubuntu/work/fserver/fserver-data"
-#base_dir = "/home/tbird/work/fserver/fserver-data"
+if not os.path.exist(base_dir):
+    base_dir = "/home/tbird/work/fserver/fserver-data"
 
 # this is used for debugging only
 def log_this(msg):
