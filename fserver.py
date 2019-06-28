@@ -47,8 +47,14 @@ import re
 
 VERSION=(0,2,0)
 
+# precedence of installation locations:
+# 1. global fserver on fuegotest.org (/home/ubuntu/work/fserver)
+# 2. local fserver in Fuego container
+# 3. test fserver on Tim's home desktop machine
 base_dir = "/home/ubuntu/work/fserver/fserver-data"
-if not os.path.exist(base_dir):
+if not os.path.exists(base_dir):
+    base_dir = "/usr/local/lib/fserver/fserver-data"
+if not os.path.exists(base_dir):
     base_dir = "/home/tbird/work/fserver/fserver-data"
 
 # this is used for debugging only
