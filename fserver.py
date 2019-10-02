@@ -19,13 +19,10 @@
 #
 # To do:
 # - queries:
-#1   - add ability for query_requests to process attributes inside
-#     the file instead of just in the filename
 #   - handle regex wildcards instead of just start/end wildcards
-# - actions:
-#   - support update-request
 # - objects:
 #   - support host registration
+#   - support user registration
 #   - support board registration
 # - security:
 #   - add otp authentication to all requests
@@ -532,8 +529,44 @@ def do_query_runs(req):
                 continue
             match_list.append(f)
 
-    # FIXTHIS - read files and filter by attributes
-    # should particularly filter on 'requestor'
+    # read files and filter by attributes
+    # (should particularly filter on 'requestor' or 'request_id')
+    if match_list:
+        import json
+
+        # read the first file to get the list of possible attributes
+        f = match_list[0]
+        with open(run_data_dir + os.sep + f) as jfd:
+            data = json.load(jfd)
+            # get a list of valid attributes
+            fields = data["metadata"].keys()
+
+            # get rid of fields already processed
+            fields.remove("host_name")
+            fields.remove("board")
+
+        # check the form for query attributes
+        # if they have the same name as a valid field, then add to list
+        query_fields={}
+        for field in fields:
+            try:
+                query_fields[field] = req.form[field].value
+            except:
+                pass
+
+        # if more to query by, then go through files, preserving matches
+        if query_fields:
+            ml_tmp = []
+            for f in match_list:
+                drop = False
+                with open(run_data_dir + os.sep + f) as jfd:
+                    data = json.load(jfd)
+                    for field, pattern in query_fields.items():
+                        if not item_match(pattern, str(data["metadata"][field])):
+                            drop = True
+                if not drop:
+                    ml_tmp.append(f)
+            match_list = ml_tmp
 
     for f in match_list:
        msg += f+"\n"
