@@ -19,7 +19,7 @@
 #
 # To do:
 # - queries:
-#   - add ability for query_requests to process attributes inside
+#1   - add ability for query_requests to process attributes inside
 #     the file instead of just in the filename
 #   - handle regex wildcards instead of just start/end wildcards
 # - actions:
@@ -72,8 +72,13 @@ class config_class:
 
 config = config_class()
 config.data_dir = base_dir + "/data"
-#config.url_base = "/cgi-bin/fserver.py"
-config.url_base = "/fserver.py"
+
+# crude attempt at auto-detecting url_base
+if os.path.exists("/usr/lib/cgi-bin/fserver.py"):
+    config.url_base = "/cgi-bin/fserver.py"
+else:
+    config.url_base = "/fserver.py"
+
 config.files_url_base = "/fserver-data"
 config.files_dir = base_dir + "/files"
 config.page_dir = base_dir + "/pages"
@@ -449,8 +454,44 @@ def do_query_requests(req):
                 continue
             match_list.append(f)
 
-    # FIXTHIS - read files and filter by attributes
-    # particularly filter on 'state'
+    # read files and filter by attributes
+    # (particularly filter on 'state')
+    if match_list:
+        import json
+
+        # read the first file to get the list of possible attributes
+        f = match_list[0]
+        with open(req_data_dir + os.sep + f) as jfd:
+            data = json.load(jfd)
+            # get a list of valid attributes
+            fields = data.keys()
+
+            # get rid of fields already processed
+            fields.remove("host")
+            fields.remove("board")
+
+        # check the form for query attributes
+        # if they have the same name as a valid field, then add to list
+        query_fields={}
+        for field in fields:
+            try:
+                query_fields[field] = req.form[field].value
+            except:
+                pass
+
+        # if more to query by, then go through files, preserving matches
+        if query_fields:
+            ml_tmp = []
+            for f in match_list:
+                drop = False
+                with open(req_data_dir + os.sep + f) as jfd:
+                    data = json.load(jfd)
+                    for field, pattern in query_fields.items():
+                        if not item_match(pattern, str(data[field])):
+                            drop = True
+                if not drop:
+                    ml_tmp.append(f)
+            match_list = ml_tmp
 
     for f in match_list:
        msg += f+"\n"
