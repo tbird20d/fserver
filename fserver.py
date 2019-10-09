@@ -405,7 +405,7 @@ def do_put_request(req):
     filename = "request-%s-%s:%s" % (timestamp, host, board)
     jfilepath = req_data_dir + os.sep + filename + ".json"
 
-    msg += "Filename '%s' calculated!\n" % jfilepath
+    msg += "request_id=%s\n" % filename
 
     # convert to json and save to file here
     import json
@@ -426,7 +426,7 @@ def do_update_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filename = request_id
+    filename = request_id + ".json"
     filepath = req_data_dir + os.sep + filename
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
@@ -546,7 +546,9 @@ def do_query_requests(req):
             match_list = ml_tmp
 
     for f in match_list:
-       msg += f+"\n"
+        # remove .json extension from request filename, to get the req_id
+        req_id = f[:-5]
+        msg += req_id+"\n"
 
     send_response("OK", msg)
 
@@ -740,7 +742,8 @@ def do_get_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = req_data_dir + os.sep +request_id
+    filename = request_id + ".json"
+    filepath = req_data_dir + os.sep + filename
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
@@ -764,13 +767,14 @@ def do_remove_request(req):
         msg += "Error: can't read request_id from form"
         send_response("FAIL", msg)
 
-    filepath = req_data_dir + os.sep + request_id
+    filename = request_id + ".json"
+    filepath = req_data_dir + os.sep + filename
     if not os.path.exists(filepath):
         msg += "Error: filepath %s does not exist" % filepath
         send_response("FAIL", msg)
 
     # FIXTHIS - should check permissions here
-    # original-submitter and requested-host only are allowed to remove
+    # only original-submitter and requested-host are allowed to remove
 
     os.remove(filepath)
 
