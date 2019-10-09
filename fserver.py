@@ -274,6 +274,61 @@ def do_put_test(req):
 
     send_response("OK", msg)
 
+def do_put_binary_package(req):
+    upload_dir = req.config.files_dir + os.sep + "binary-packages"
+    result, msg, filepath = save_file(req, "file1", upload_dir)
+
+    if result != "OK":
+        send_response(result, msg)
+
+    # FIXTHIS - should sanity-check the binary-package.json file here!
+    filename = os.path.basename(filepath)
+    if not filename.endswith(".ftbp"):
+        msg += "Invalid filename for test specified: %s (expected .ftbp extension)\n" % filename
+        os.unlink(filepath)
+        send_response("FAIL", msg)
+
+    msg += "Created %s\n" % filepath
+
+    name_parts = filename.split("-")
+    toolchain = name_parts[0]
+    test_name = name_parts[1]
+
+    bp_data_dir = req.config.data_dir + os.sep + "binary-packages"
+
+    # extract yaml file into data dir
+    bpdd = bp_data_dir
+    tn = test_name
+    tc = toolchain
+    cmd = "tar -C %s -xf %s ./binary-package.json" % (bpdd, filepath)
+    result = os.system(cmd)
+    json_src_name = "%s/binary-package.json" % (bpdd)
+    json_dest_name = "%s/%s-%s.json" % (bpdd, tc, tn)
+    if not os.path.exists(json_src_name):
+        msg += "Error: can't find %s\n in extracted .ftbp contents" % json_src_name
+        send_response("FAIL", msg)
+
+    os.rename(json_src_name, json_dest_name)
+
+    msg += "Extracted %s from uploaded file\n" % json_dest_name
+
+    # create wrapper tbwiki page for binary package
+#    page_content = """Here is data for test binary package %(page_name)s:
+#
+#<hr>
+#{{{#!FuegoShow
+#item_ref=page_name.json
+#}}}
+#--------
+#
+#Go to [[Tests]] page.
+#"""
+#    req.write_page(page_content, test_name)
+#    msg += "Created %s page\n" % test_name
+
+    send_response("OK", msg)
+
+
 def do_put_run(req):
     # FIXTHIS - could consolidate put_test and put_run
     upload_dir = req.config.files_dir + os.sep + "runs"
@@ -781,7 +836,7 @@ def file_list_html(req, file_type, subdir, extension):
             filelist.append(d)
 
     if not filelist:
-        return req.html_error("No %s files found." % subdir[:-1])
+        return req.html_error("No %s (%s) files found." % (subdir[:-1], extension))
 
     files_url = "%s/%s/%s/" % (config.files_url_base, file_type, subdir)
     html = "<ul>"
@@ -893,8 +948,15 @@ def do_show(req):
     log_this("in do_show, req.page_name='%s'\n" % req.page_name)
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
-    if req.page_name not in ["tests", "requests", "runs"]:
+    if req.page_name not in ["binary-packages", "tests", "requests", "runs"]:
         title = "Error - unknown object type '%s'" % req.page_name
+
+    if req.page_name=="binary-packages":
+        # FIXTHIS - convert to pretty-printed list of binary packages, with link
+        # to test.json and .ftbp file
+        print("<H1>List of binary packages</h1>")
+        print(file_list_html(req, "data", "binary-packages", ".json"))
+        print(file_list_html(req, "files", "binary-packages", ".ftbp"))
 
     if req.page_name=="tests":
         # FIXTHIS - convert to pretty-printed list of tests, with link
@@ -921,6 +983,7 @@ def do_show(req):
     print("""
 Here are links to the different Fuego objects:<br>
 <ul>
+<li><a href="%(url_base)s/binary-packages">Test Binary Packages</a></li>
 <li><a href="%(url_base)s/tests">Tests</a></li>
 <li><a href="%(url_base)s/requests">Requests</a></li>
 <li><a href="%(url_base)s/runs">Runs</a></li>
@@ -974,6 +1037,7 @@ def main(req):
 
     # map action names to "do_<action>" functions
     if action in ["show", "put_test", "put_run", "put_request",
+            "put_binary_package",
             "query_requests", "query_runs", "query_tests",
             "get_request", "get_run", "get_test",
             "remove_request", "remove_test", "remove_run",
