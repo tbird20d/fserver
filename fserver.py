@@ -290,16 +290,28 @@ def do_put_binary_package(req):
 
     msg += "Created %s\n" % filepath
 
-    name_parts = filename.split("-")
+    # figure out filename parts
+    if "-Functional." in filename:
+        name_parts = filename.split("-Functional.")
+        test_type = "Functional."
+    elif "-Benchmark." in filename:
+        name_parts = filename.split("-Benchmark.")
+        test_type = "Benchmark."
+    else:
+        msg += "Invalid filename for test specified: %s (expected Functional or Benchmark test type)\n" % filename
+        os.unlink(filepath)
+        send_response("FAIL", msg)
+
     toolchain = name_parts[0]
-    test_name = name_parts[1]
+    name_rest = name_parts[1].split("-binary-package.")[0]
+    test_name = test_type + name_rest
 
     bp_data_dir = req.config.data_dir + os.sep + "binary-packages"
 
     # extract yaml file into data dir
     bpdd = bp_data_dir
-    tn = test_name
     tc = toolchain
+    tn = test_name
     cmd = "tar -C %s -xf %s ./binary-package.json" % (bpdd, filepath)
     result = os.system(cmd)
     json_src_name = "%s/binary-package.json" % (bpdd)
