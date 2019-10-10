@@ -626,7 +626,9 @@ def do_query_runs(req):
             match_list = ml_tmp
 
     for f in match_list:
-       msg += f+"\n"
+        # remove .json extension from run filename
+        run_id = f[:-5]
+        msg += run_id+"\n"
 
     send_response("OK", msg)
 
@@ -756,6 +758,27 @@ def do_get_request(req):
     # beautify the data, for now
     data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
     send_response("OK", data)
+
+# return the url to download a run package
+def do_get_run_url(req):
+    run_file_dir = req.config.files_dir + os.sep + "runs"
+    msg = ""
+
+    try:
+        run_id = req.form["run_id"].value
+    except:
+        msg += "Error: can't read run_id from form"
+        send_response("FAIL", msg)
+
+    filename = run_id + ".frp"
+    filepath = run_file_dir + os.sep + filename
+    if not os.path.exists(filepath):
+        msg += "Error: filepath %s does not exist" % filepath
+        send_response("FAIL", msg)
+
+    run_file_url = config.files_url_base + "/files/runs/" + filename
+    msg += run_file_url
+    send_response("OK", msg)
 
 def do_remove_request(req):
     req_data_dir = req.config.data_dir + os.sep + "requests"
@@ -1039,14 +1062,16 @@ def main(req):
     # perform action
     req.form = cgi.FieldStorage()
 
-    # map action names to "do_<action>" functions
-    if action in ["show", "put_test", "put_run", "put_request",
+    action_list = ["show", "put_test", "put_run", "put_request",
             "put_binary_package",
             "query_requests", "query_runs", "query_tests",
-            "get_request", "get_run", "get_test",
+            "get_request", "get_run_url", "get_test",
             "remove_request", "remove_test", "remove_run",
-            "update_request"]:
-    # FIXTHIS: missing get_run, get_test, remove_test, remove_run do functions
+            "update_request"]
+
+    # map action names to "do_<action>" functions
+    if action in action_list:
+        # FIXTHIS: missing do_get_test, do_remove_test functions
         action_function = globals().get("do_" + action)
         action_function(req)
         # NOTE: computer actions don't return to here, but 'show' does
