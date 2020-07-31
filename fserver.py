@@ -21,9 +21,10 @@
 # - queries:
 #   - handle regex wildcards instead of just start/end wildcards
 # - objects:
+#   - support board objects
+#   - support board registration
 #   - support host registration
 #   - support user registration
-#   - support board registration
 # - security:
 #   - add otp authentication to all requests
 #     - check host's otp file for specified key
@@ -386,6 +387,40 @@ def do_put_run(req):
 
     send_response("OK", msg)
 
+def do_put_board(req):
+    req_data_dir = req.config.data_dir + os.sep + "boards"
+    result = "OK"
+    msg = ""
+
+    #convert form (cgi.fieldStorage) to dictionary
+    mydict = {}
+    for k in req.form.keys():
+        mydict[k] = req.form[k].value
+
+    # remove action
+    del(mydict["action"])
+
+    # sanity check the submitted data
+    # check for host and board
+    try:
+        host = mydict["host"]
+        board = mydict["board"]
+        # FIXTHIS - check that host is registered
+    except:
+        result = "FAIL"
+        msg += "Error: missing host or board in form data"
+
+    filename = "board-%s:%s" % (timestamp, host, board)
+    jfilepath = req_data_dir + os.sep + filename + ".json"
+
+    # convert to json and save to file
+    import json
+    data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
+    fout = open(jfilepath, "w")
+    fout.write(data+'\n')
+    fout.close()
+
+    send_response(result, msg)
 
 def do_put_request(req):
     req_data_dir = req.config.data_dir + os.sep + "requests"
@@ -987,7 +1022,7 @@ def do_show(req):
     log_this("in do_show, req.page_name='%s'\n" % req.page_name)
     #print("req.page_name='%s' <br><br>" % req.page_name)
 
-    if req.page_name not in ["binary-packages", "tests", "requests", "runs"]:
+    if req.page_name not in ["binary-packages", "boards", "tests", "requests", "runs"]:
         title = "Error - unknown object type '%s'" % req.page_name
 
     if req.page_name=="binary-packages":
@@ -996,6 +1031,10 @@ def do_show(req):
         print("<H1>List of binary packages</h1>")
         print(file_list_html(req, "data", "binary-packages", ".json"))
         print(file_list_html(req, "files", "binary-packages", ".ftbp"))
+
+    if req.page_name=="boards":
+        print("<H1>List of boards</h1>")
+        print(file_list_html(req, "data", "boards", ".json"))
 
     if req.page_name=="tests":
         # FIXTHIS - convert to pretty-printed list of tests, with link
@@ -1023,6 +1062,7 @@ def do_show(req):
 Here are links to the different Fuego objects:<br>
 <ul>
 <li><a href="%(url_base)s/binary-packages">Test Binary Packages</a></li>
+<li><a href="%(url_base)s/boards">Boards</a></li>
 <li><a href="%(url_base)s/tests">Tests</a></li>
 <li><a href="%(url_base)s/requests">Requests</a></li>
 <li><a href="%(url_base)s/runs">Runs</a></li>
