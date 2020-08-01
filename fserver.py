@@ -519,6 +519,49 @@ def item_match(pattern, item):
         return True
     return False
 
+def do_query_boards(req):
+    #log_this("TRB: in do_query_boards 1")
+    board_data_dir = req.config.data_dir + os.sep + "boards"
+    msg = ""
+
+    filelist = os.listdir(board_data_dir)
+    filelist.sort()
+
+    # can query by different fields, some in the name and some inside
+    # the json
+
+    try:
+        query_host = req.form["host"].value
+    except:
+        query_host = "*"
+
+    try:
+        query_board = req.form["board"].value
+    except:
+        query_board = "*"
+
+    # handle host and board-based queries
+    match_list = []
+    for f in filelist:
+        if f.startswith("board-") and f.endswith("json"):
+            host_and_board = f[6:-5]
+            if not host_and_board:
+                continue
+            if not item_match(query_host, host_and_board.split(":")[0]):
+                continue
+            if not item_match(query_board, host_and_board.split(":")[1]):
+                continue
+            match_list.append(f)
+
+    # FIXTHIS - read files and filter by attributes
+    # particularly filter on 'state'
+
+    for f in match_list:
+       msg += f+"\n"
+
+    send_response("OK", msg)
+
+
 def do_query_requests(req):
     #log_this("TRB: in do_query_requests 1")
     req_data_dir = req.config.data_dir + os.sep + "requests"
@@ -1115,8 +1158,8 @@ def main(req):
     req.form = cgi.FieldStorage()
 
     action_list = ["show", "put_test", "put_run", "put_request",
-            "put_binary_package",
-            "query_requests", "query_runs", "query_tests",
+            "put_binary_package", "put_board",
+            "query_boards", "query_requests", "query_runs", "query_tests",
             "get_request", "get_run_url", "get_test",
             "remove_request", "remove_test", "remove_run",
             "update_request"]
@@ -1129,7 +1172,7 @@ def main(req):
         # NOTE: computer actions don't return to here, but 'show' does
         return
 
-    req.show_header("TBWiki Error")
+    req.show_header("Fserver Error")
     print(req.html_error("Unknown action '%s'" % action))
 
 
