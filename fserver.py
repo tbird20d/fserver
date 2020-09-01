@@ -444,10 +444,21 @@ def do_put_request(req):
     try:
         host = mydict["host"]
         board = mydict["board"]
-        # FIXTHIS - check that host and board are registered
     except:
         result = "FAIL"
         msg += "Error: missing host or board in form data"
+
+    # see if this board is registered with the server
+    board_filename = "board-%s:%s.json" % (host, board)
+    board_data_dir = req.config.data_dir + os.sep + "boards"
+    board_path = board_data_dir + os.sep + board_filename
+    if not os.path.isfile(board_path):
+        result = "FAIL"
+        msg += "Error: No matching board '%s:%s' registered with server" % (host, board)
+
+    if result != "OK":
+        send_response(result, msg)
+        return
 
     filename = "request-%s-%s:%s" % (timestamp, host, board)
     jfilepath = req_data_dir + os.sep + filename + ".json"
@@ -551,13 +562,13 @@ def do_query_boards(req):
                 continue
             if not item_match(query_board, host_and_board.split(":")[1]):
                 continue
-            match_list.append(f)
+            match_list.append(host_and_board)
 
     # FIXTHIS - read files and filter by attributes
     # particularly filter on 'state'
 
-    for f in match_list:
-       msg += f+"\n"
+    for host_and_board in match_list:
+       msg += host_and_board+"\n"
 
     send_response("OK", msg)
 
