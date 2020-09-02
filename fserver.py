@@ -21,7 +21,6 @@
 # - queries:
 #   - handle regex wildcards instead of just start/end wildcards
 # - objects:
-#   - support board objects
 #   - support board registration
 #   - support host registration
 #   - support user registration
@@ -43,12 +42,12 @@ import re
 #import json
 #import yaml
 
-VERSION=(0,2,0)
+VERSION=(0,6,0)
 
 # precedence of installation locations:
 # 1. global fserver on fuegotest.org (/home/ubuntu/work/fserver)
 # 2. local fserver in Fuego container
-# 3. test fserver on Tim's home desktop machine
+# 3. test fserver on Tim's private server machine (birdcloud.org)
 base_dir = "/home/ubuntu/work/fserver/fserver-data"
 if not os.path.exists(base_dir):
     base_dir = "/usr/local/lib/fserver/fserver-data"
