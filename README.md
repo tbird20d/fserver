@@ -1,6 +1,5 @@
 FServer is a Fuego json and yaml test object web server.
 
-
 Introduction
 ============
 FServer handles the user interface (HTML),
@@ -9,13 +8,12 @@ the following Fuego objects
  * Tests
  * Requests
  * Runs
+ * Test Target Packages
 
 In the future, additional objects may be stored, including:
  * test reviews
- * test target packages
  * test report definitions
- * lab definitions
- * board definitions
+ * lab and board definitions
  * user objects
 
 Starting in foreground mode
@@ -57,6 +55,8 @@ To access the server using the command line, use:
  * ftc list-requests
  * ftc run-request
  * ftc put-run
+ * ftc put-binary-package
+ * ftc list-boards -r
 
 Configuring Fuego to access the server
 ======================================
