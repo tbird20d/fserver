@@ -3,7 +3,7 @@
 #
 # fserver.py - Fuego server CGI script
 #
-# Copyright 2018 Sony
+# Copyright 2018,2020 Sony
 #
 # Implementation notes:
 #  files directory = place where uploaded file bundles are stored
