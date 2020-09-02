@@ -38,6 +38,7 @@ import os
 import time
 import cgi
 import re
+import tempfile
 # import these as needed
 #import json
 #import yaml
@@ -342,11 +343,10 @@ def do_put_binary_package(req):
 
 
 def do_put_run(req):
-    # FIXTHIS - could consolidate put_test and put_run
     upload_dir = req.config.files_dir + os.sep + "runs"
     result, msg, filepath = save_file(req, "file1", upload_dir)
 
-    # should sanity-check the manifest (json) file here!
+    # FIXTHIS - should check the filepath syntax here (don't allow .., etc.)
 
     # should be something like:
     # run-2016-02-16_12-21-00-Functional.bc-on-timdesk:bbb.frp
@@ -355,30 +355,42 @@ def do_put_run(req):
         msg += "Invalid filename for run specified: %s" % filename
         send_response("FAIL", msg)
 
-    run_name = filename[4:-4]
+    run_id = filename[4:-4]
     msg += "Created %s\n" % filepath
 
-    # extract json file into data dir
-    run_data_dir = req.config.data_dir + os.sep + "runs"
+    # extra data under files/runs
+    run_file_dir = req.config.files_dir + os.sep + "runs"
+    tempdir = tempfile.mkdtemp(dir=run_file_dir)
 
-    rdd = run_data_dir
-    rn = run_name
-    cmd = "tar -C %s -xf %s run/run.json --force-local" % (rdd, filepath)
+    # TRB working here!
+    # extract .frp into files/runs/<tempdir>
+    # it will leave a 'run' directory in that dir
+    cmd = "tar -C %s -xf %s --force-local" % (tempdir, filepath)
     msg += "Tar cmd=%s\n" % cmd
     rcode = os.system(cmd)
     if rcode != 0:
-        send_response("FAIL", msg+"Could not extract run/run.json file")
+        send_response("FAIL", msg+"Could not extract file from run package")
 
-    json_src_name = "%s/run/run.json" % (rdd)
-    json_dest_name = "%s/run-%s.json" % (rdd, rn)
+    # FIXTHIS - should add a manifest to .frp files, and sanity check here
+
+    # move files/runs/<tempdir>/run directory to files/runs/<rundir>
+    tmp_run_name = tempdir + "/run"
+    rundir_name = run_file_dir + os.sep + run_id
+    os.rename(tmp_run_name, rundir_name)
+
+
+    # symlink run.json file to data/runs/run-<run_id>.son
+    json_src_name = rundir_name + os.sep + "run.json"
     if not os.path.exists(json_src_name):
         msg += "Error: can't find %s\n in extracted .frp contents" % json_src_name
         send_response("FAIL", msg)
 
-    os.rename(json_src_name, json_dest_name)
-    os.rmdir("%s/run" % rdd)
+    run_data_dir = req.config.data_dir + os.sep + "runs"
+    json_dest_name = "%s/run-%s.json" % (run_data_dir, run_id)
+    os.symlink(json_src_name, json_dest_name)
+    os.rmdir(tempdir)
 
-    # FIXTHIS - should return url here instead of full server path??
+    # FIXTHIS - return url here instead of full server path??
     msg += "Extracted %s from uploaded file\n" % json_dest_name
 
     # create tbwiki page for test??
@@ -530,7 +542,7 @@ def item_match(pattern, item):
     return False
 
 def do_query_boards(req):
-    #log_this("TRB: in do_query_boards 1")
+    #log_this("in do_query_boards")
     board_data_dir = req.config.data_dir + os.sep + "boards"
     msg = ""
 
@@ -573,7 +585,7 @@ def do_query_boards(req):
 
 
 def do_query_requests(req):
-    #log_this("TRB: in do_query_requests 1")
+    #log_this("in do_query_requests")
     req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
 
@@ -726,7 +738,7 @@ def do_query_runs(req):
             match_list = ml_tmp
 
     for f in match_list:
-        # remove .json extension from run filename
+        # run_id = run filename minus .json extension
         run_id = f[:-5]
         msg += run_id+"\n"
 
@@ -1159,7 +1171,7 @@ def main(req):
     req.action = action
 
     # NOTE: uncomment this when you get a 500 error
-    #req.show_header('TRB Debug')
+    #req.show_header('Debug')
     #show_env(os.environ)
     log_this("in main request loop: action='%s'<br>" % action)
     #print("in main request loop: action='%s'<br>" % action)
