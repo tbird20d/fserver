@@ -1,33 +1,47 @@
 Here are some notes about fserver - the Fuego server implementation.
 
+This server is a CGI script that provides online storage, and a rendezvous
+point for Fuego objects.  Current objects supported are:
+  * run requests, runs, tests, test binary packages, and boards.
+
+Other objects that might be supported in the future include:
+  *  pass-criteria, reviews, users?
+
+== programatic interface ==
+The server handles requests from ftc to put, update, query, and remove
+objects, via it's web interface.
+
+The server is a "dumb store", in that it doesn't do any intelligent handling
+of the data, and just minimal visualization. It's primary purpose is to
+allow sharing of objects between Fuego users and labs.
+
+== user interface ==
+The server handles showing a user interface to examine the objects on
+the server.
+
+It can show lists of objects, and the content of individual objects.
+
 Files:
  fserver.py - the Fuego server
  fserver-server.py - a python web server (supports CGI) for testing purposes
  start_server - a shell script to start the test server
+ make-otp-file - script used to create a one-time-pad file
+   (which is used for authenticating operations from labs)
 
 Data Files:
- in the 'files' directory:
-  * tests - has tests that have been uploaded to the server
-  * requests - has requests that were put to the server
-  * runs - has runs that were put to the server
+ The 'data' directory hierarchy has single files (usually json) that are
+ used to represent objects, including requests, runs, tests, boards,
+ and binary-packages.
+  * tests - <test>.yaml files
+  * runs - run-xxx.json files
+  * boards - board-<host:board>.json files
+  * binary-package - <binary-package>.json files
+  * requests - request-xxx.json files
 
-The server itself is a CGI script, written in python
-
-== user interface ==
-It handles showing a user interface to examine the objects on the server.
-
-It can show lists of objects, and the content of individual objects.
-
-== programatic interface ==
-It also handles requests from ftc to put, update, query, and remove objects.
-
-The server is a "dumb store", in that it doesn't do any intelligent handling
-of the data, or any visualization. It's primary purpose is to allow sharing
-of objects bewteen Fuego users and labs.
-
-current objects supported are: tests, run requests, runs.
-
-Other objects that might be supported in the future include:
- - labs, hosts, boards, pass-criteria, reviews, users?
- - hosts, labs and users might one-time-pad encryption keys
+ The 'files' directory has aggregate files for tests, runs and binary-packages,
+ as well as extracted run data for runs
+  * tests - <test>.ftp files
+  * runs - <run>.frp files
+    * also a directory of extracted run contents for each <run>
+  * binary-packages/<binary-package>.ftbp
 
