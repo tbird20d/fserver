@@ -23,7 +23,7 @@ It can show lists of objects, and the content of individual objects.
 
 Files:
  fserver.py - the Fuego server
- fserver-server.py - a python web server (supports CGI) for testing purposes
+ test-server.py - a python web server (supports CGI) for testing purposes
  start_server - a shell script to start the test server
  make-otp-file - script used to create a one-time-pad file
    (which is used for authenticating operations from labs)

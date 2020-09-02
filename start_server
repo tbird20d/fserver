@@ -5,4 +5,4 @@
 
 unset http_proxy
 unset ftp_proxy
-exec python fserver-server.py $1
+exec python test-server.py $1

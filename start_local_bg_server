@@ -13,8 +13,9 @@ echo "   $DIR/fserver-data"
 perl -p -i -e "s&^base_dir = .*&base_dir = \"$DIR/fserver-data\"&" fserver.py
 
 echo "Starting fserver"
+echo "Test web server is logging to /tmp/fserver-test-server.log"
 cd $DIR
 unset http_proxy
 unset ftp_proxy
-python fserver-server.py $1 >>/tmp/fserver-server-log.output 2>&1 &!
+python test-server.py $1 >>/tmp/fserver-test-server.log 2>&1 &!
 
