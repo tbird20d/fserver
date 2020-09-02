@@ -1069,7 +1069,7 @@ def show_run_table(req):
         run_fd.close()
 
         html += '  <tr>\n'
-        html += '    <td>%s</td>\n' % run_id
+        html += '    <td><a href="'+files_url+run_id+'">'+run_id+'</a></td>\n'
         html += '    <td>%s</td>\n' % run_dict["name"]
         html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
         html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
