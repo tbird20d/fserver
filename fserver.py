@@ -180,7 +180,16 @@ def show_env(env, full=0):
 def get_timestamp():
     t = time.time()
     tfrac = int((t - int(t))*100)
-    timestamp = time.strftime("%Y-%m-%d_%H:%M:%S.") + "%02d" % tfrac
+    # Note that I'm not using iso8016 date format here
+    # (which would be time.strftime("%FT%T%z")
+    # That doesn't give sub-second precision - but I'm not sure if that matters
+    # change _ to T, and add timezone
+    # Note that this timestamp is part of a request_id, and it shows
+    # up in user-visible places and filenames.  so proceed with caution.
+    timestamp = time.strftime("%Y-%m-%d_%H:%M:%S.", time.gmtime(t)) + "%02d" % tfrac
+    zone = time.strftime("%s")
+    # FIXTHIS - add time zone to timestamp
+    #timestamp += "+" + zone # this doesn't work
     return timestamp
 
 def save_file(req, file_field, upload_dir):
