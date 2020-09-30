@@ -1067,6 +1067,7 @@ def show_run_table(req):
 
     data_url = config.files_url_base + "/data/runs/"
     files_url = config.files_url_base + "/files/runs/"
+    del_url = config.url_base + "?action=remove_run&run_id="
     html = """<table border="1" cellpadding="2">
   <tr>
     <th>Run Id</th>
@@ -1076,18 +1077,21 @@ def show_run_table(req):
     <th>Board</th>
     <th>Result</th>
     <th>Run File bundle</th>
+    <th>Action links</th>
   </tr>
 """
     import json
     for item in filelist:
-        # run_id is the filename with "run-" and ".json" removed
-        run_id = item[4:-5]
+        # run_id is the filename with ".json" removed
+        run_id = item[:-5]
+        # run_dir is the run_id with "run-" removed
+        run_dir = run_id[4:]
         run_fd = open(src_dir+os.sep + item, "r")
         run_dict = json.load(run_fd)
         run_fd.close()
 
         html += '  <tr>\n'
-        html += '    <td><a href="'+files_url+run_id+'">'+run_id+'</a></td>\n'
+        html += '    <td><a href="'+files_url+run_dir+'">'+run_id+'</a></td>\n'
         html += '    <td>%s</td>\n' % run_dict["name"]
         html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
         html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
@@ -1095,6 +1099,7 @@ def show_run_table(req):
         html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
         filename = item[:-4]+"frp"
         html += '    <td><a href="'+files_url+filename+'">' + filename + '</a></td>\n'
+        html += '    <td><a href="'+del_url+run_id+'">Delete run</a></td>\n'
         html += '  </tr>\n'
     html += "</table>"
     print(html)
