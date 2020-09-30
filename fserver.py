@@ -1009,6 +1009,7 @@ def show_request_table(req):
         return req.html_error("No request files found.")
 
     files_url = config.files_url_base + "/data/requests/"
+    del_url = config.url_base + "?action=remove_request&request_id="
     html = """<table border="1" cellpadding="2">
   <tr>
     <th>Request</th>
@@ -1018,10 +1019,13 @@ def show_request_table(req):
     <th>Board</th>
     <th>Test</th>
     <th>Run (results)</th>
+    <th>Action links</th>
   </tr>
 """
     import json
     for item in filelist:
+        # request_id is filename minus the .json suffix
+        request_id = item[:-5]
         request_fd = open(src_dir+os.sep + item, "r")
         req_dict = json.load(request_fd)
         request_fd.close()
@@ -1032,11 +1036,16 @@ def show_request_table(req):
         except:
             req_dict["run_id"] = "Not available"
 
+
         html += '  <tr>\n'
         html += '    <td><a href="'+files_url+item+'">' + item + '</a></td>\n'
         for attr in ["state", "requestor", "host", "board", "test_name",
                 "run_id"]:
             html += '    <td>%s</td>\n' % req_dict[attr]
+
+        # add a 'delete' link
+        html += '    <td><a href="' + del_url + request_id + '">Delete request</a></td>\n'
+
         html += '  </tr>\n'
     html += "</table>"
     print(html)
