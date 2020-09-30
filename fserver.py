@@ -1009,6 +1009,7 @@ def show_request_table(req):
         return req.html_error("No request files found.")
 
     files_url = config.files_url_base + "/data/requests/"
+    run_files_url = config.files_url_base + "/files/runs/"
     del_url = config.url_base + "?action=remove_request&request_id="
     html = """<table border="1" cellpadding="2">
   <tr>
@@ -1036,11 +1037,19 @@ def show_request_table(req):
         except:
             req_dict["run_id"] = "Not available"
 
-
         html += '  <tr>\n'
         html += '    <td><a href="'+files_url+item+'">' + item + '</a></td>\n'
         for attr in ["state", "requestor", "host", "board", "test_name",
                 "run_id"]:
+            if attr == "run_id":
+                # create a link to the run directory, if present
+                run_id = req_dict["run_id"]
+                run_dir = run_id
+                if os.path.isdir(config.files_dir + "/runs/" + run_dir):
+                    html += '    <td><a href="'+run_files_url+run_dir+'">'+run_id+'</a></td>\n'
+                    continue
+
+            # show just the attribute
             html += '    <td>%s</td>\n' % req_dict[attr]
 
         # add a 'delete' link
