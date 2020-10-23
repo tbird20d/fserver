@@ -378,7 +378,7 @@ def do_put_run(req):
     msg += "Tar cmd=%s\n" % cmd
     rcode = os.system(cmd)
     if rcode != 0:
-        send_response("FAIL", msg+"Could not extract file from run package")
+        send_response("FAIL", msg+"Could not extract file from run package\n")
 
     # FIXTHIS - should add a manifest to .frp files, and sanity check here
 
@@ -391,7 +391,7 @@ def do_put_run(req):
     # symlink run.json file to data/runs/run-<run_id>.son
     json_src_name = rundir_name + os.sep + "run.json"
     if not os.path.exists(json_src_name):
-        msg += "Error: can't find %s\n in extracted .frp contents" % json_src_name
+        msg += "Error: can't find %s\n in extracted .frp contents\n" % json_src_name
         send_response("FAIL", msg)
 
     run_data_dir = req.config.data_dir + os.sep + "runs"
@@ -922,7 +922,8 @@ def do_remove_request(req):
 
     os.remove(filepath)
 
-    msg += "Request file %s was removed\n" % filepath
+    # can remove os.path.basename() to debug
+    msg += "Request file %s was removed\n" % os.path.basename(filepath)
     send_response("OK", msg)
 
 def do_remove_run(req):
@@ -948,7 +949,7 @@ def do_remove_run(req):
         msg += "Error: could not remove %s\n" % json_path
         result = "FAIL"
 
-    msg += "Run file %s was removed\n" % json_path
+    msg += "Run file %s was removed\n" % os.path.basename(json_path)
 
     # remove .frp file
     frp_path = run_file_dir + os.sep + run_id + ".frp"
@@ -962,7 +963,7 @@ def do_remove_run(req):
         msg += "Error: could not remove %s\n" % frp_path
         result = "FAIL"
 
-    msg += "Run file %s was removed\n" % frp_path
+    msg += "Run file %s was removed\n" % os.path.basename(frp_path)
 
     # remove extracted run data
     run_dir_path = run_file_dir + os.sep + run_id[4:]
@@ -973,7 +974,7 @@ def do_remove_run(req):
         msg += "Error: could not remove %s\n" % run_dir_path
         result = "FAIL"
 
-    msg += "Run directory %s was removed\n" % run_dir_path
+    msg += "Run directory %s was removed\n" % os.path.basename(run_dir_path)
 
     send_response(result, msg)
 
