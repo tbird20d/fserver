@@ -1084,6 +1084,7 @@ def show_run_table(req):
     <th>Spec</th>
     <th>Host</th>
     <th>Board</th>
+    <th>Timestamp</th>
     <th>Result</th>
     <th>Run File bundle</th>
     <th>Action links</th>
@@ -1095,19 +1096,30 @@ def show_run_table(req):
         run_id = item[:-5]
         # run_dir is the run_id with "run-" removed
         run_dir = run_id[4:]
-        run_fd = open(src_dir+os.sep + item, "r")
-        run_dict = json.load(run_fd)
-        run_fd.close()
+
+        file_read_error = False
+        try:
+            run_fd = open(src_dir+os.sep + item, "r")
+            run_dict = json.load(run_fd)
+            run_fd.close()
+        except IOError:
+            file_read_error = True
 
         html += '  <tr>\n'
-        html += '    <td><a href="'+files_url+run_dir+'">'+run_id+'</a></td>\n'
-        html += '    <td>%s</td>\n' % run_dict["name"]
-        html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
-        html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
-        html += '    <td>%s</td>\n' % run_dict["metadata"]["board"]
-        html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
-        filename = item[:-4]+"frp"
-        html += '    <td><a href="'+files_url+filename+'">' + filename + '</a></td>\n'
+        if file_read_error:
+            html += '    <td>'+run_id+'</td>\n'
+            html += '    <td colspan="7">'
+            html += '<font color="red">Read error on server for this run</font></td>\n'
+        else:
+            html += '    <td><a href="'+files_url+run_dir+'">'+run_id+'</a></td>\n'
+            html += '    <td>%s</td>\n' % run_dict["name"]
+            html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
+            html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
+            html += '    <td>%s</td>\n' % run_dict["metadata"]["board"]
+            html += '    <td>%s</td>\n' % run_dict["metadata"]["timestamp"]
+            html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
+            filename = item[:-4]+"frp"
+            html += '    <td><a href="'+files_url+filename+'">frp file</a></td>\n'
         html += '    <td><a href="'+del_url+run_id+'">Delete run</a></td>\n'
         html += '  </tr>\n'
     html += "</table>"
