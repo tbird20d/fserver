@@ -908,13 +908,13 @@ def do_remove_request(req):
     try:
         request_id = req.form["request_id"].value
     except:
-        msg += "Error: can't read request_id from form"
+        msg += "Error: can't read request_id from form\n"
         send_response("FAIL", msg)
 
     filename = request_id + ".json"
     filepath = req_data_dir + os.sep + filename
     if not os.path.exists(filepath):
-        msg += "Error: filepath %s does not exist" % filepath
+        msg += "Error: filepath %s does not exist\n" % filepath
         send_response("FAIL", msg)
 
     # FIXTHIS - should check permissions here
@@ -922,46 +922,60 @@ def do_remove_request(req):
 
     os.remove(filepath)
 
-    msg += "Request file %s was removed" % filepath
+    msg += "Request file %s was removed\n" % filepath
     send_response("OK", msg)
 
 def do_remove_run(req):
     run_data_dir = req.config.data_dir + os.sep + "runs"
     run_file_dir = req.config.files_dir + os.sep + "runs"
+    result = "OK"
     msg = ""
 
+    # remove json file, frp and run directory
     try:
         run_id = req.form["run_id"].value
     except:
-        msg += "Error: can't read run_id from form"
-        send_response("FAIL", msg)
+        msg += "Error: can't read run_id from form\n"
+        result = "FAIL"
 
-    datapath = run_data_dir + os.sep + run_id + ".json"
-    if not os.path.exists(datapath):
-        msg += "Error: filepath %s does not exist" % datapath
-        send_response("FAIL", msg)
+    json_path = run_data_dir + os.sep + run_id + ".json"
 
     # FIXTHIS - should check permissions here
-    # original-submitter and requested-host only are allowed to remove
+    # only original-submitter and requested-host are allowed to remove
     try:
-        os.remove(datapath)
+        os.remove(json_path)
     except:
-        send_response("FAIL", "Error: could not remove %s" % datapath)
-    msg += "Run file %s was removed\n" % datapath
+        msg += "Error: could not remove %s\n" % json_path
+        result = "FAIL"
 
-    filepath = run_file_dir + os.sep + run_id + ".frp"
-    if not os.path.exists(filepath):
-        msg += "Error: filepath %s does not exist" % filepath
-        send_response("FAIL", msg)
+    msg += "Run file %s was removed\n" % json_path
+
+    # remove .frp file
+    frp_path = run_file_dir + os.sep + run_id + ".frp"
+    if not os.path.exists(frp_path):
+        msg += "Error: filepath %s does not exist\n" % frp_path
+        result = "FAIL"
 
     try:
-        os.remove(filepath)
+        os.remove(frp_path)
     except:
-        msg += "Error: could not remove %s" % filepath
-        send_response("FAIL", msg)
-    msg += "Run file %s was removed\n" % filepath
+        msg += "Error: could not remove %s\n" % frp_path
+        result = "FAIL"
 
-    send_response("OK", msg)
+    msg += "Run file %s was removed\n" % frp_path
+
+    # remove extracted run data
+    run_dir_path = run_file_dir + os.sep + run_id[4:]
+    try:
+        import shutil
+        shutil.rmtree(run_dir_path)
+    except:
+        msg += "Error: could not remove %s\n" % run_dir_path
+        result = "FAIL"
+
+    msg += "Run directory %s was removed\n" % run_dir_path
+
+    send_response(result, msg)
 
 
 def file_list_html(req, file_type, subdir, extension):
