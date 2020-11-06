@@ -521,7 +521,7 @@ def do_update_request(req):
         if k in ["request_id", "action"]:
             # skip these
             continue
-        if k in ["state", "run_id", "start_time", "done_time"]:
+        if k in ["state", "run_id", "start_time", "done_time", "reason"]:
             # FIXTHIS - could check the data input here
             req_dict[k] = req.form[k].value
         else:
