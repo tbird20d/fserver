@@ -1057,12 +1057,19 @@ def show_request_table(req):
         for attr in ["state", "requestor", "host", "board", "test_name",
                 "run_id"]:
             if attr == "run_id":
-                # create a link to the run directory, if present
-                run_id = req_dict["run_id"]
-                run_dir = run_id
-                if os.path.isdir(config.files_dir + "/runs/" + run_dir):
-                    html += '    <td><a href="'+run_files_url+run_dir+'">'+run_id+'</a></td>\n'
-                    continue
+                if req_dict["state"] == "done":
+                    # create a link to the run directory, if present
+                    run_id = req_dict["run_id"]
+                    run_dir = run_id
+                    if os.path.isdir(config.files_dir + "/runs/" + run_dir):
+                        html += '    <td><a href="'+run_files_url+run_dir+'">'+run_id+'</a></td>\n'
+                        continue
+                if req_dict["state"] == "error":
+                    try:
+                        html += '    <td><font color="red">'+req_dict["reason"]+'</font></td>\n'
+                        continue
+                    except:
+                        pass
 
             # show just the attribute
             html += '    <td>%s</td>\n' % req_dict[attr]
