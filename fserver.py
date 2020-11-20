@@ -430,15 +430,16 @@ def do_put_board(req):
         result = "FAIL"
         msg += "Error: missing host or board in form data"
 
-    filename = "board-%s:%s" % (timestamp, host, board)
-    jfilepath = req_data_dir + os.sep + filename + ".json"
+    if result == "OK":
+        filename = "board-%s:%s" % (host, board)
+        jfilepath = req_data_dir + os.sep + filename + ".json"
 
-    # convert to json and save to file
-    import json
-    data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
-    fout = open(jfilepath, "w")
-    fout.write(data+'\n')
-    fout.close()
+        # convert to json and save to file
+        import json
+        data = json.dumps(mydict, sort_keys=True, indent=4, separators=(',', ': '))
+        fout = open(jfilepath, "w")
+        fout.write(data+'\n')
+        fout.close()
 
     send_response(result, msg)
 
