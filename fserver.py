@@ -39,6 +39,8 @@ import time
 import cgi
 import re
 import tempfile
+import datetime
+
 # import these as needed
 #import json
 #import yaml
@@ -596,6 +598,9 @@ def do_query_boards(req):
 
 
 def do_query_requests(req):
+    # check for request timeouts
+    timeout_requests(req)
+
     #log_this("in do_query_requests")
     req_data_dir = req.config.data_dir + os.sep + "requests"
     msg = ""
@@ -1010,7 +1015,59 @@ def file_list_html(req, file_type, subdir, extension):
     html += "</ul>"
     return html
 
+def timeout_requests(req):
+    src_dir = req.config.data_dir + os.sep + "requests"
+
+    full_dirlist = os.listdir(src_dir)
+
+    # filter list to only request....json files, and create
+    # full filenames
+    filelist = []
+    for f in full_dirlist:
+        if f.startswith("request") and f.endswith(".json"):
+            filelist.append(src_dir + "/" + f)
+
+    import json
+
+    now = datetime.datetime.now()
+    for filepath in filelist:
+        update_request = False
+
+        # read request data
+        request_fd = open(filepath, "r")
+        req_dict = json.load(request_fd)
+        request_fd.close()
+
+        start_time = req_dict["start_time"]
+        if req_dict["state"] == "running" and start_time != "unknown":
+            try:
+                dt_start_time = datetime.datetime.strptime(start_time[:-3], "%Y-%m-%d_%H:%M:%S")
+            except:
+                update_request = True
+                req_dict["state"] = "error"
+                req_dict["reason"] = "Could not parse start_time of %s" % start_time
+                dt_start_time = now   # prevent timeout
+
+            # expire a request 12 hours after it was started
+            # this is arbitrary
+            if now > dt_start_time + datetime.timedelta(hours=12):
+                update_request = True
+                req_dict["state"] = "error"
+                req_dict["reason"] = "Request timed out. Test was not completed within 12 hours of starting (at %s)." % start_time
+                req_dict["done_time"] = get_timestamp()
+
+        if update_request:
+            # put dictionary back in json format (beautified)
+            data = json.dumps(req_dict, sort_keys=True, indent=4, separators=(',', ': '))
+            fout = open(filepath, "w")
+            fout.write(data+'\n')
+            fout.close()
+
+
 def show_request_table(req):
+    # check for request timeouts
+    timeout_requests(req)
+
     src_dir = req.config.data_dir + os.sep + "requests"
 
     full_dirlist = os.listdir(src_dir)
