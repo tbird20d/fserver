@@ -374,7 +374,6 @@ def do_put_run(req):
     run_file_dir = req.config.files_dir + os.sep + "runs"
     tempdir = tempfile.mkdtemp(dir=run_file_dir)
 
-    # TRB working here!
     # extract .frp into files/runs/<tempdir>
     # it will leave a 'run' directory in that dir
     cmd = "tar -C %s -xf %s --force-local" % (tempdir, filepath)
@@ -389,7 +388,6 @@ def do_put_run(req):
     tmp_run_name = tempdir + "/run"
     rundir_name = run_file_dir + os.sep + run_id
     os.rename(tmp_run_name, rundir_name)
-
 
     # symlink run.json file to data/runs/run-<run_id>.son
     json_src_name = rundir_name + os.sep + "run.json"
@@ -1017,6 +1015,7 @@ def file_list_html(req, file_type, subdir, extension):
 
 def timeout_requests(req):
     #req.add_to_message('in timeout_requests()')
+    #log_this("in timeout_requests()")
     src_dir = req.config.data_dir + os.sep + "requests"
 
     full_dirlist = os.listdir(src_dir)
@@ -1045,8 +1044,15 @@ def timeout_requests(req):
             start_time = "unknown"
 
         if req_dict["state"] == "running" and start_time != "unknown":
+            # remove timezone suffix
+            # timezone ending is '+HHMM' or '-HHMM'
+            # FIXTHIS - should not throw away the timezone information
+            if start_time[-5] in ["+", "-"]:
+                start_time = start_time[:-5]
+
             try:
-                dt_start_time = datetime.datetime.strptime(start_time[:-3], "%Y-%m-%d_%H:%M:%S")
+                dt_start_time = datetime.datetime.strptime(start_time,
+                        "%Y-%m-%dT%H:%M:%S")
             except:
                 update_request = True
                 req_dict["state"] = "error"
