@@ -1016,6 +1016,7 @@ def file_list_html(req, file_type, subdir, extension):
     return html
 
 def timeout_requests(req):
+    #req.add_to_message('in timeout_requests()')
     src_dir = req.config.data_dir + os.sep + "requests"
 
     full_dirlist = os.listdir(src_dir)
@@ -1038,7 +1039,11 @@ def timeout_requests(req):
         req_dict = json.load(request_fd)
         request_fd.close()
 
-        start_time = req_dict["start_time"]
+        try:
+            start_time = req_dict["start_time"]
+        except:
+            start_time = "unknown"
+
         if req_dict["state"] == "running" and start_time != "unknown":
             try:
                 dt_start_time = datetime.datetime.strptime(start_time[:-3], "%Y-%m-%d_%H:%M:%S")
