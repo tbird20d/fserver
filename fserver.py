@@ -1034,7 +1034,11 @@ def timeout_requests(req):
         update_request = False
 
         # read request data
-        request_fd = open(filepath, "r")
+        try:
+            request_fd = open(filepath, "r")
+        except:
+            continue
+
         req_dict = json.load(request_fd)
         request_fd.close()
 
