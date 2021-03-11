@@ -33,10 +33,22 @@
 # - see also items marked with FIXTHIS
 #
 
+#debug = True
+debug = False
+
 import sys
 import os
 import time
-import cgi
+
+if debug:
+    sys.path.append("/home/ubuntu/work/fserver")
+    # this module logs data from the 'cgi' module to
+    # fserver-data/cgi-module.log
+    import mycgi
+    cgi = mycgi
+else:
+    import cgi
+
 import re
 import tempfile
 import datetime
@@ -62,6 +74,7 @@ if not os.path.exists(base_dir):
 def log_this(msg):
     with open(base_dir+"/fserver.log" ,"a") as f:
         f.write("[%s] %s\n" % (get_timestamp(), msg))
+        f.flush()
 
 # define an instance to hold config vars
 class config_class:
@@ -200,9 +213,11 @@ def save_file(req, file_field, upload_dir):
     F = "FAIL"
     msg = ""
 
-    #msg += "req.form=\n"
-    #for k in req.form.keys():
-    #   msg += "%s: %s\n" % (k, req.form[k])
+    if debug:
+        log_msg = "DEBUG: req.form=\n"
+        for k in req.form.keys():
+            log_msg += "%s: %s\n" % (k, req.form[k])
+        log_this(log_msg)
 
     if not req.form.has_key(file_field):
         return F, msg+"Form is missing key %s\n" % file_field, ""
@@ -232,6 +247,8 @@ def send_response(result, data):
     sys.stdout.write("Content-type: text/html\n\n%s\n" % result)
     sys.stdout.write(data)
     sys.stdout.flush()
+    if debug:
+        log_this("DEBUG: send_response: %s with msg: '%s'" % (result, data))
     sys.exit(0)
 
 def do_put_test(req):
@@ -356,6 +373,17 @@ def do_put_binary_package(req):
 
 def do_put_run(req):
     upload_dir = req.config.files_dir + os.sep + "runs"
+
+    try:
+        req.form = cgi.FieldStorage(strict_parsing=1)
+
+    except:
+        log_this("Exception calling cgi.FieldStorage()")
+        import traceback
+        emsg = traceback.format_exc()
+        log_this(emsg)
+        send_response("FAIL", "Exception calling cgi.FieldStorage()")
+
     result, msg, filepath = save_file(req, "file1", upload_dir)
 
     # FIXTHIS - should check the filepath syntax here (don't allow .., etc.)
@@ -1317,11 +1345,20 @@ def main(req):
     # NOTE: uncomment this when you get a 500 error
     #req.show_header('Debug')
     #show_env(os.environ)
-    log_this("in main request loop: action='%s'<br>" % action)
-    #print("in main request loop: action='%s'<br>" % action)
+    if debug:
+        remote_addr = os.environ.get("REMOTE_ADDR", "unknown")
+        content_length = os.environ.get("CONTENT_LENGTH", "unknown")
+        content_type = os.environ.get("CONTENT_TYPE", "unknown")
+        log_this("DEBUG: REMOTE_ADDR=%s, CONTENT_LENGTH=%s, CONTENT_TYPE=%s" %
+                (remote_addr, content_length, content_type))
+        log_this("DEBUG: in main(), request loop: action='%s'" % action)
 
     # perform action
-    req.form = cgi.FieldStorage()
+    if action != "put_run":
+        req.form = cgi.FieldStorage()
+
+    if debug:
+        log_this("DEBUG: in main(), after call to cgi.FieldStorage")
 
     action_list = ["show", "put_test", "put_run", "put_request",
             "put_binary_package", "put_board",
@@ -1332,11 +1369,17 @@ def main(req):
 
     # map action names to "do_<action>" functions
     if action in action_list:
+        if debug:
+            log_this("trying to call do_%s" % action)
+
         # FIXTHIS: missing do_get_test, do_remove_test functions
         action_function = globals().get("do_" + action)
         action_function(req)
-        # NOTE: computer actions don't return to here, but 'show' does
+        # NOTE: computer actions don't return to here, but 'do_show' does
         return
+
+    if debug:
+        log_this("Fserver Error: unknown action '%s'" % action)
 
     req.show_header("Fserver Error")
     print(req.html_error("Unknown action '%s'" % action))
