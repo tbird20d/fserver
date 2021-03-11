@@ -702,8 +702,8 @@ def do_query_runs(req):
     match_list = []
     for f in filelist:
         if f.startswith("run-") and f.endswith("json"):
-            # last item after dashes, with '.json' removed
-            host_and_board = f.split("-")[-1][:-5]
+            # last item after "-on-", with '.json' removed
+            host_and_board = f.split("-on-")[-1][:-5]
             if not host_and_board:
                 continue
             if not item_match(query_host, host_and_board.split(":")[0]):
