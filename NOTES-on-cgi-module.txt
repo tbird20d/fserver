@@ -1,0 +1,20 @@
+Here are some notes about the python cgi module:
+
+looks for the following environment variables:
+ REQUEST_METHOD (for GET or POST or HEAD)
+ CONTENT_TYPE
+ QUERY_STRING
+ CONTENT_LENGTH
+
+HTTP headers that are examined:
+ content-type
+ content-disposition
+
+for form values, you can test the field's 'file' attribute to
+see if the item is a file:
+ex: if form["file1"].file:
+      <process the value as a file>
+
+File attributes are, by default, placed in a temporary file, and the
+file is read when the form value is accessed:
+   fileitem = form["file1"]
