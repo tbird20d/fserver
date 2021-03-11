@@ -706,6 +706,10 @@ def do_query_runs(req):
             host_and_board = f.split("-on-")[-1][:-5]
             if not host_and_board:
                 continue
+            if ":" not in host_and_board:
+                # not sure what happened here - bad filename?
+                log_this("Error: Invalid host:board: '%s' in filename %s" % (host_and_board, f))
+                continue
             if not item_match(query_host, host_and_board.split(":")[0]):
                 continue
             if not item_match(query_board, host_and_board.split(":")[1]):
