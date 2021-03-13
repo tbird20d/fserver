@@ -1225,27 +1225,56 @@ def show_run_table(req):
         # run_dir is the run_id with "run-" removed
         run_dir = run_id[4:]
 
+        run_filepath = src_dir + os.sep + item
         file_read_error = False
+        file_data_error = False
         try:
-            run_fd = open(src_dir+os.sep + item, "r")
+            run_fd = open(run_filepath, "r")
             run_dict = json.load(run_fd)
             run_fd.close()
+
         except IOError:
             file_read_error = True
 
+        if "name" in run_dict:
+            name = run_dict["name"]
+        elif "test_name" in run_dict:
+            # this is here because older versions of the Fuego core
+            # created a pre-run run.json file with 'test_name' instead
+            # of 'name'.
+            name = run_dict["test_name"]
+        else:
+            # well, this shouldn't happen
+            # but report it anyway
+            name = "<i>data error</i>"
+            file_data_error = True
+
+        try:
+            test_spec = run_dict["metadata"]["test_spec"]
+            host_name = run_dict["metadata"]["host_name"]
+            board = run_dict["metadata"]["board"]
+            status = run_dict["status"]
+            timestamp = run_dict["metadata"]["timestamp"]
+        except KeyError:
+            file_data_error = True
+
         html += '  <tr>\n'
-        if file_read_error:
+        if file_read_error or file_data_error:
             html += '    <td>'+run_id+'</td>\n'
-            html += '    <td colspan="7">'
-            html += '<font color="red">Read error on server for this run</font></td>\n'
+            html += '    <td colspan="7">\n<font color="red">'
+            if file_read_error:
+                html += "Read"
+            else:
+                html += "Data"
+            html += ' error on server for this run %s</font></td>\n'
         else:
             html += '    <td><a href="'+files_url+run_dir+'">'+run_id+'</a></td>\n'
-            html += '    <td>%s</td>\n' % run_dict["name"]
-            html += '    <td>%s</td>\n' % run_dict["metadata"]["test_spec"]
-            html += '    <td>%s</td>\n' % run_dict["metadata"]["host_name"]
-            html += '    <td>%s</td>\n' % run_dict["metadata"]["board"]
-            html += '    <td>%s</td>\n' % run_dict["metadata"]["timestamp"]
-            html += '    <td><a href="'+data_url+item+'">' + run_dict["status"] + '</a></td>\n'
+            html += '    <td>%s</td>\n' % name
+            html += '    <td>%s</td>\n' % test_spec
+            html += '    <td>%s</td>\n' % host_name
+            html += '    <td>%s</td>\n' % board
+            html += '    <td>%s</td>\n' % timestamp
+            html += '    <td><a href="'+data_url+item+'">' + status + '</a></td>\n'
             filename = item[:-4]+"frp"
             html += '    <td><a href="'+files_url+filename+'">frp file</a></td>\n'
         html += '    <td><a href="'+del_url+run_id+'">Delete run</a></td>\n'
