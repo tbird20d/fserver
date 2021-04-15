@@ -33,8 +33,8 @@
 # - see also items marked with FIXTHIS
 #
 
-#debug = True
 debug = False
+#debug = True
 
 import sys
 import os
@@ -469,6 +469,61 @@ def do_put_board(req):
         fout = open(jfilepath, "w")
         fout.write(data+'\n')
         fout.close()
+
+    send_response(result, msg)
+
+def do_update_board(req):
+    req_data_dir = req.config.data_dir + os.sep + "boards"
+    result = "OK"
+    msg = ""
+
+    #convert form (cgi.fieldStorage) to dictionary
+    new_dict = {}
+    for k in req.form.keys():
+        new_dict[k] = req.form[k].value
+
+    # remove action
+    del(new_dict["action"])
+
+    # sanity check the submitted data
+    # check for host and board
+    try:
+        host = new_dict["host"]
+        board = new_dict["board"]
+        # FIXTHIS - check that host is registered
+    except:
+        msg += "Error: missing host or board in form data"
+        send_response("FAIL", msg)
+        return
+
+    filename = "board-%s:%s" % (host, board)
+    jfilepath = req_data_dir + os.sep + filename + ".json"
+
+    # check that board is already registered
+    if not os.path.exists(jfilepath):
+        msg += "Error: board '%s:%s' is not registered" % (host, board)
+        send_response("FAIL", msg)
+        return
+
+    # FIXTHIS - should validate that user has authorization to modify the board
+
+    import json
+    board_fd = open(jfilepath, "r")
+    board_dict = json.load(board_fd)
+    board_fd.close()
+
+    # FIXTHIS - prevent client from updating certain fields
+
+    # don't need to filter these, as they should match
+    #del(new_dict["host"])
+    #del(new_dict["board"])
+    board_dict.update(new_dict)
+
+    # convert to json and save to file
+    data = json.dumps(board_dict, sort_keys=True, indent=4, separators=(',', ': '))
+    fout = open(jfilepath, "w")
+    fout.write(data+'\n')
+    fout.close()
 
     send_response(result, msg)
 
@@ -1390,7 +1445,7 @@ def main(req):
         log_this("DEBUG: in main(), after call to cgi.FieldStorage")
 
     action_list = ["show", "put_test", "put_run", "put_request",
-            "put_binary_package", "put_board",
+            "put_binary_package", "put_board", "update_board",
             "query_boards", "query_requests", "query_runs", "query_tests",
             "get_request", "get_run_url", "get_test",
             "remove_request", "remove_test", "remove_run",
