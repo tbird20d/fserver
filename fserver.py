@@ -527,6 +527,37 @@ def do_update_board(req):
 
     send_response(result, msg)
 
+def do_get_board(req):
+    req_data_dir = req.config.data_dir + os.sep + "boards"
+    result = "OK"
+    msg = ""
+
+    try:
+        host = req.form["host"].value
+        board = req.form["board"].value
+    except:
+        msg += "Error: missing host or board in form data"
+        send_response("FAIL", msg)
+        return
+
+    filename = "board-%s:%s" % (host, board)
+    jfilepath = req_data_dir + os.sep + filename + ".json"
+
+    # check that board is already registered
+    if not os.path.exists(jfilepath):
+        msg += "Error: board '%s:%s' is not registered" % (host, board)
+        send_response("FAIL", msg)
+        return
+
+    #retrieving <board>.json fields into board dictionary
+    import json
+    board_fd = open(jfilepath, "r")
+    msg = board_fd.read()
+    board_fd.close()
+
+    send_response(result,msg)
+
+
 def do_put_request(req):
     req_data_dir = req.config.data_dir + os.sep + "requests"
     result = "OK"
@@ -1445,7 +1476,7 @@ def main(req):
         log_this("DEBUG: in main(), after call to cgi.FieldStorage")
 
     action_list = ["show", "put_test", "put_run", "put_request",
-            "put_binary_package", "put_board", "update_board",
+            "put_binary_package", "put_board", "update_board", "get_board",
             "query_boards", "query_requests", "query_runs", "query_tests",
             "get_request", "get_run_url", "get_test",
             "remove_request", "remove_test", "remove_run",
