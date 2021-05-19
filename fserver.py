@@ -549,13 +549,12 @@ def do_get_board(req):
         send_response("FAIL", msg)
         return
 
-    #retrieving <board>.json fields into board dictionary
-    import json
+    # send json file to client
     board_fd = open(jfilepath, "r")
-    msg = board_fd.read()
+    data = board_fd.read()
     board_fd.close()
 
-    send_response(result,msg)
+    send_response(result, data)
 
 
 def do_put_request(req):
