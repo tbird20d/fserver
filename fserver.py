@@ -894,7 +894,7 @@ def do_query_tests(req):
         query_version = "*"
 
     try:
-        query_release = req.form["release"].value
+        query_release = req.form["fuego_release"].value
     except:
         query_release = "*"
 
