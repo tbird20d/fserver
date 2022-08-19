@@ -886,7 +886,7 @@ def do_query_tests(req):
     filelist = os.listdir(test_data_dir)
     filelist.sort()
 
-    # can query by different fields, all in the name for now
+    # can query by different fields, all in the filename for now
     try:
         query_name = req.form["name"].value
     except:
@@ -906,7 +906,6 @@ def do_query_tests(req):
     match_list = []
     for f in filelist:
         if f.endswith(".yaml"):
-            ftp_filename = f[:-5] + ".ftp"
             # remove '.yaml' and separate into parts
             try:
                 name, version, release = f[:-5].split("-")
@@ -918,7 +917,80 @@ def do_query_tests(req):
                 continue
             if not item_match(query_release, release):
                 continue
-            match_list.append(ftp_filename)
+            package_name = f[:-5]
+            match_list.append(package_name)
+
+    for f in match_list:
+       msg += f+"\n"
+
+    send_response("OK", msg)
+
+def do_query_binary_tests(req):
+    test_data_dir = req.config.data_dir + os.sep + "binary-packages"
+    test_files_dir = req.config.files_dir + os.sep + "binary-packages"
+    msg = ""
+
+    filelist = os.listdir(test_data_dir)
+    filelist.sort()
+
+    # can query by different fields, all in the filename for now
+    try:
+        query_toolchain = req.form["toolchain"].value
+    except:
+        query_toolchain = "*"
+    try:
+        query_name = req.form["name"].value
+    except:
+        query_name = "*"
+    try:
+        query_version = req.form["version"].value
+    except:
+        query_version = "*"
+    try:
+        query_release = req.form["fuego_release"].value
+    except:
+        query_release = "*"
+
+
+    # handle queries
+    match_list = []
+    for f in filelist:
+        if f.endswith(".json"):
+            # remove '.json' and separate into parts
+            # toolchain is before test type (Functional or Benchmark)
+            # other items are separated by -
+            if '-Functional.' in f:
+                toolchain, rest = f[:-5].split("-Functional.", 1)
+                test_type = "Functional."
+            elif '-Benchmark.' in f:
+                toolchain, rest = f.split("-Benchmark.", 1)
+                test_type = "Benchmark."
+            else:
+                # what kind of test is this?
+                # log an error, an continue
+                log_this("Unknown test type for binary package '%s'" % f)
+                continue
+
+            try:
+                # FIXTHIS - this will change when we add spec and version
+                base_name = rest
+            except:
+                log_this("Invald syntax for binary package name '%s'" % rest)
+                continue
+
+            name = test_type + '.' + base_name
+
+            # do filtering
+            if not item_match(query_toolchain, toolchain):
+                continue
+            if not item_match(query_name, name):
+                continue
+            #if not item_match(query_version, version):
+            #    continue
+            #if not item_match(query_release, release):
+            #    continue
+            package_name = f[:-5]
+            match_list.append(package_name)
 
     for f in match_list:
        msg += f+"\n"
@@ -1480,6 +1552,7 @@ def main(req):
     action_list = ["show", "put_test", "put_run", "put_request",
             "put_binary_package", "put_board", "update_board", "get_board",
             "query_boards", "query_requests", "query_runs", "query_tests",
+            "query_binary_tests",
             "get_request", "get_run_url", "get_test",
             "remove_request", "remove_test", "remove_run",
             "update_request"]
