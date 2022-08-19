@@ -657,11 +657,14 @@ def item_match(pattern, item):
         return True
     if pattern==item:
         return True
+    if pattern.startswith("*") and \
+        pattern[1:] == item[-(len(pattern)-1):]:
+        return True
     if pattern.endswith("*") and \
         pattern[:-1] == item[:len(pattern)-1]:
         return True
-    if pattern.startswith("*") and \
-        pattern[1:] == item[-(len(pattern)-1):]:
+    if pattern.startswith("*") and pattern.endswith("*") and \
+        pattern[1:-1] in item:
         return True
     return False
 
